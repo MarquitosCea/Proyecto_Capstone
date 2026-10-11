@@ -1,0 +1,162 @@
+#map-misterio {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1; 
+}
+
+/* --- TEMA MISTERIO (HEADER Y TARJETA) --- */
+::ng-deep .tema-misterio ion-toolbar {
+  --background: #121212;
+  color: #e0e0e0;
+}
+
+.tarjeta-oscura {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  margin: 16px;
+  z-index: 9999; 
+  border-radius: 12px;
+  background-color: rgba(18, 18, 18, 0.95);
+  box-shadow: 0 4px 16px #ff00b7; /* Resplandor Morado */
+  max-height: 45vh; 
+  overflow-y: auto; 
+}
+
+/* FIX LEAFLET CONTROLS */
+::ng-deep .leaflet-top { top: 10px !important; }
+
+/* --- ANIMACIÓN USUARIO (Morado) --- */
+::ng-deep .pulso-misterio {
+  width: 20px;
+  height: 20px;
+  background: #ff00b7; 
+  border: 3px solid #121212;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #ff00b7;
+  position: relative;
+}
+
+::ng-deep .pulso-misterio::after {
+  content: "";
+  position: absolute;
+  top: -3px; left: -3px; right: -3px; bottom: -3px;
+  background: rgba(191, 85, 236, 0.5); 
+  border-radius: 50%;
+  z-index: -1;
+  animation: latidoMisterio 1.5s infinite ease-out;
+}
+
+@keyframes latidoMisterio {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* Limpia el recuadro blanco que Leaflet le pone por defecto a los divIcons */
+.icono-ubicacion-limpio {
+  background: transparent;
+  border: none;
+}
+
+/* El círculo central morado y la animación del radar */
+.pulso-misterio {
+  width: 16px;
+  height: 16px;
+  background-color: #ff00b7;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 0 0 8px #ff00b7;
+}
+
+.pulso-misterio::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #ff00b7;
+  opacity: 0;
+  animation: latido 1.5s ease-out infinite;
+}
+
+@keyframes latido {
+  0% { transform: scale(0.3); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Oscurecer artificialmente el mapa de Esri para el Modo Misterio */
+::ng-deep #map-misterio .leaflet-tile-pane {
+  filter: brightness(0.6) contrast(1.2);
+}
+
+::ng-deep .leaflet-control-attribution {
+  display: none !important;
+}
+
+.btn-microfono {
+  align-self: flex-end;
+  margin-bottom: 10px;
+}
+
+/* Convertir todos los popups de Leaflet al Modo Misterio (Oscuro) */
+::ng-deep .leaflet-popup-content-wrapper {
+  background-color: #121212 !important;
+  border: 1px solid #ff00b7; /* Le da un borde morado muy sutil */
+}
+
+::ng-deep .leaflet-popup-tip {
+  background-color: #121212 !important;
+  border: 1px solid #ff00b7;
+}
+
+/* Opcional: Cambiar el color de la "X" para cerrar el popup */
+::ng-deep .leaflet-popup-close-button {
+  color: #ff00b7 !important;
+}
+
+/* --- TRUCO: MODO OSCURO PARA OPENSTREETMAP --- */
+::ng-deep .mapa-oscuro-filtro {
+  filter: invert(80%) hue-rotate(180deg) brightness(90%) contrast(90%);
+}
+
+/* Forzar fondo negro absoluto en el modal de misterio */
+::ng-deep ion-modal {
+  --background: #000000 !important;
+  --ion-background-color: #000000 !important;
+}
+
+::ng-deep ion-modal ion-header ion-toolbar {
+  --background: #000000 !important;
+  border-bottom: 1px solid #bf55ec;
+  
+}
+
+::ng-deep ion-modal ion-content {
+  --background: #000000 !important;
+}
+
+/* Fondo gris más claro para las cajas de texto (resaltan sobre el negro) */
+::ng-deep ion-modal ion-item {
+  --background: #1e1e1e !important; /* Gris carbón claro */
+  --inner-border-width: 0 !important; /* <-- ESTO ELIMINA LA LÍNEA BLANCA INTERNA */
+  --border-width: 0 !important;       /* <-- ESTO ELIMINA LA LÍNEA BLANCA EXTERNA */
+  border: 1px solid rgba(255, 0, 183, 0.5); /* Borde magenta sutil */
+  border-radius: 8px; /* Bordes redondeados */
+  margin-bottom: 12px; /* Separación entre cajas */
+}
+
+/* --- NUEVO BOTÓN DE PUBLICAR TEMÁTICO --- */
+.btn-publicar {
+  --background: #ff00b7; /* Magenta del tema */
+  --background-hover: #d6009a;
+  --background-activated: #b30081;
+  --color: #ffffff;
+  --border-radius: 8px;
+  --box-shadow: 0 4px 15px rgba(255, 0, 183, 0.4); /* Resplandor que da sensación de botón activo/seguro */
+  font-weight: bold;
+  letter-spacing: 1px;
+}

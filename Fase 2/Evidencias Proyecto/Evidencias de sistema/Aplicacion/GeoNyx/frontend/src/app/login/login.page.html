@@ -1,0 +1,68 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar style="--background: #121212;">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/home" style="color: white;"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding" style="--background: #121212;">
+  
+  <!-- CABECERA: TÍTULO GEONYX CON COLORES -->
+  <div class="ion-text-center" style="margin-top: 30px; margin-bottom: 40px;">
+    <h1 style="font-size: 45px; font-weight: 800; margin: 0; letter-spacing: 2px;">
+      <span style="color: #2dd36f;">Geo</span><span style="color: #ff00b7;">Nyx</span>
+    </h1>
+    <p style="color: #aaaaaa; margin-top: 5px; font-size: 16px;">
+      Descubre la historia, revela el misterio.
+    </p>
+  </div>
+
+  <!-- FORMULARIO DE LOGIN -->
+  <div style="background: #1e1e1e; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    
+    <!-- CAMPO EMAIL -->
+    <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px; margin-bottom: 15px;">
+      <ion-icon name="mail-outline" slot="start" style="color: #2dd36f;"></ion-icon>
+      <ion-input 
+        type="email" 
+        placeholder="Correo Electrónico" 
+        [(ngModel)]="credenciales.email" 
+        style="color: white; --placeholder-color: #888888;">
+      </ion-input>
+    </ion-item>
+
+    <!-- CAMPO CONTRASEÑA -->
+    <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px;">
+      <ion-icon name="lock-closed-outline" slot="start" style="color: #ff00b7;"></ion-icon>
+      <ion-input 
+        type="password" 
+        placeholder="Contraseña" 
+        [(ngModel)]="credenciales.password" 
+        style="color: white; --placeholder-color: #888888;">
+      </ion-input>
+    </ion-item>
+
+    <!-- BOTÓN OLVIDÉ CONTRASEÑA -->
+    <div class="ion-text-right" style="margin-top: 10px; margin-bottom: 25px;">
+      <ion-button fill="clear" size="small" style="color: #aaaaaa; text-transform: none; font-size: 13px;" (click)="recuperarPassword()">
+        ¿Olvidaste tu contraseña?
+      </ion-button>
+    </div>
+
+    <!-- BOTÓN INGRESAR (Gradiente verde-magenta) -->
+    <ion-button expand="block" style="--background: linear-gradient(90deg, #2dd36f 0%, #ff00b7 100%); --border-radius: 10px; font-weight: bold; height: 50px;" (click)="ingresar()">
+      INICIAR SESIÓN
+    </ion-button>
+  </div>
+
+  <!-- BOTÓN REGISTRO (ABAJO) -->
+  <div class="ion-text-center" style="margin-top: 40px;">
+    <ion-text style="color: #aaaaaa; font-size: 14px;">¿No tienes una cuenta?</ion-text>
+    <br>
+    <ion-button fill="clear" style="color: #ff00b7; font-weight: bold; margin-top: 5px;" (click)="irARegistro()">
+      REGÍSTRATE AQUÍ
+    </ion-button>
+  </div>
+
+</ion-content>

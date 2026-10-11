@@ -1,0 +1,123 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+<ion-buttons slot="start">
+  <ion-button (click)="abrirMenu()">
+    <ion-icon name="menu-outline" style="font-size: 32px; margin-left: 10px; color: white;"></ion-icon>
+  </ion-button>
+</ion-buttons>
+    
+    <ion-title class="ion-text-center">
+      GeoNyx | <span style="color: #2dd36f;">Modo Histórico</span>
+    </ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button (click)="irAMisterio()">
+        <ion-icon name="sunny-outline" style="font-size: 28px; margin-right: 10px; color: #ffc409;"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar>
+    <ion-searchbar 
+      [value]="textoBuscado"
+      placeholder="Explorando Historias" 
+      (ionInput)="buscarHistoria($event)"
+      debounce="300">
+    </ion-searchbar>
+    <ion-buttons slot="end">
+      <ion-button (click)="iniciarReconocimientoVoz()">
+        <ion-icon 
+          [name]="escuchando ? 'mic' : 'mic-outline'" 
+          [color]="escuchando ? 'danger' : 'primary'" 
+          style="font-size: 26px;">
+        </ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [scrollY]="false">
+  
+  <ion-list *ngIf="lugaresFiltrados.length > 0" class="resultados-busqueda">
+    <ion-item *ngFor="let lugar of lugaresFiltrados" (click)="seleccionarLugarBuscador(lugar)" button>
+      <ion-icon name="location-outline" slot="start" color="primary"></ion-icon>
+      <ion-label>{{ lugar.title }}</ion-label>
+    </ion-item>
+  </ion-list>
+
+  <div id="map-container"></div>
+
+  <ion-card *ngIf="mostrarTarjeta" class="tarjeta-historica">
+    <ion-card-header>
+      <ion-card-subtitle style="color: #2dd36f;">Panorama Encontrado</ion-card-subtitle>
+      <ion-card-title style="color: #222; font-weight: bold;">{{ lugarSeleccionado.titulo }}</ion-card-title>
+    </ion-card-header>
+
+    <ion-card-content>
+      <div class="ion-text-center ion-margin-bottom">
+        <ion-button size="small" [color]="idiomaLeyendo === 'es-CL' ? 'warning' : 'primary'" (click)="toggleAudio('es-CL')">
+          <ion-icon [name]="idiomaLeyendo === 'es-CL' ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
+          ES
+        </ion-button>
+        <ion-button size="small" [color]="idiomaLeyendo === 'en-US' ? 'warning' : 'tertiary'" (click)="toggleAudio('en-US')" class="ion-margin-start">
+          <ion-icon [name]="idiomaLeyendo === 'en-US' ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
+          EN
+        </ion-button>
+      </div>
+
+      <p style="color: black;"><strong>Estás a {{ lugarSeleccionado.distancia }} metros.</strong></p>
+      <p style="color: #444; margin-top: 8px;">
+        {{ mostrarHistoriaCompleta ? lugarSeleccionado.historiaCompleta : lugarSeleccionado.historiaCorta }}
+      </p>
+
+      <ion-row class="ion-margin-top">
+        <ion-col size="6">
+          <ion-button expand="block" color="success" (click)="toggleHistoria()">
+            <ion-icon name="book-outline" slot="start"></ion-icon>
+            LEER {{ mostrarHistoriaCompleta ? 'MENOS' : 'MÁS' }}
+          </ion-button>
+        </ion-col>
+        <ion-col size="6">
+          <ion-button expand="block" color="primary" (click)="iniciarNavegacion(lugarSeleccionado.lat, lugarSeleccionado.lon)">
+            <ion-icon name="navigate-outline" slot="start"></ion-icon>
+            VIAJAR
+          </ion-button>
+        </ion-col>
+      </ion-row>
+
+      <div class="ion-text-center ion-margin-top">
+        <ion-button fill="clear" color="danger" (click)="cerrarTarjeta()">CERRAR</ion-button>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- BOTÓN "MI UBICACIÓN" -->
+  <ion-fab *ngIf="!mostrarTarjeta" vertical="bottom" horizontal="start" slot="fixed" style="margin-bottom: 25px; margin-left: 10px; z-index: 9999;">
+    <ion-fab-button color="light" (click)="centrarMapaEnUsuario()">
+      <ion-icon name="locate-outline" color="danger"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+  <!-- BOTÓN "CANCELAR VIAJE" -->
+  <ion-fab *ngIf="navegando && !mostrarTarjeta" vertical="bottom" horizontal="center" slot="fixed" style="margin-bottom: 25px; z-index: 9999;">
+    <ion-fab-button color="danger" (click)="cancelarNavegacion()">
+      <ion-icon name="close-outline" style="font-size: 28px; color: white;"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+  <!-- MENÚ DE TOURS -->
+  <ion-fab *ngIf="!mostrarTarjeta && !navegando" vertical="bottom" horizontal="end" slot="fixed" style="margin-bottom: 25px; margin-right: 10px; z-index: 9999;">
+    <ion-fab-button color="tertiary">
+      <ion-icon name="map-outline"></ion-icon>
+    </ion-fab-button>
+    <ion-fab-list side="top">
+      <ion-fab-button color="light" (click)="generarTourSorpresa()">
+        <ion-icon name="shuffle-outline" color="warning"></ion-icon>
+      </ion-fab-button>
+      <ion-fab-button color="light" (click)="generarTourDinamico()">
+        <ion-icon name="footsteps-outline" color="success"></ion-icon>
+      </ion-fab-button>
+    </ion-fab-list>
+  </ion-fab>
+
+</ion-content>

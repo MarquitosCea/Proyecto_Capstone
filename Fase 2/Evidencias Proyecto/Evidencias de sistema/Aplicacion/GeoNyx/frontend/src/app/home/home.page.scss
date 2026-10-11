@@ -1,0 +1,91 @@
+/* 1. EL MAPA */
+#map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1; 
+}
+
+/* 2. LA TARJETA */
+.tarjeta-historica {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  margin: 16px;
+  z-index: 9999; 
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  max-height: 45vh; 
+  overflow-y: auto; 
+}
+
+/* 3. RESULTADOS DE BÚSQUEDA */
+.resultados-busqueda {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1001; 
+  background-color: white; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 0 0 12px 12px;
+}
+
+/* 4. FIX PARA LA CAJA DE RUTAS Y BOTONES DE LEAFLET */
+::ng-deep .leaflet-top {
+  top: 10px !important;
+}
+
+::ng-deep .leaflet-routing-container {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #222 !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  max-height: 35vh !important;
+  overflow-y: auto !important;
+  margin-right: 10px !important;
+}
+
+::ng-deep .leaflet-routing-container table {
+  color: #222 !important;
+}
+
+::ng-deep .leaflet-routing-alt h2, 
+::ng-deep .leaflet-routing-alt h3 {
+  color: #2dd36f !important;
+}
+
+/* 5. ÍCONO DE UBICACIÓN ACTUAL (Punto animado en ROJO) */
+::ng-deep .pulso-ubicacion {
+  width: 20px;
+  height: 20px;
+  background: #eb445a; /* Rojo brillante de Ionic */
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(235, 68, 90, 0.5);
+  position: relative;
+}
+
+::ng-deep .pulso-ubicacion::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: rgba(235, 68, 90, 0.5); /* Rojo transparente para la onda */
+  border-radius: 50%;
+  z-index: -1;
+  animation: latido 1.5s infinite ease-out;
+}
+
+@keyframes latido {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+::ng-deep .leaflet-control-attribution {
+  display: none !important;
+}

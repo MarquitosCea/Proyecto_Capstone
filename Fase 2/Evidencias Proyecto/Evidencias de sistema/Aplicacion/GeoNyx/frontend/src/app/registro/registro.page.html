@@ -1,0 +1,83 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar style="--background: #121212;">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/home" style="color: white;"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding" style="--background: #121212;">
+  
+  <div class="ion-text-center" style="margin-top: 10px; margin-bottom: 30px;">
+    <h1 style="font-size: 32px; font-weight: 800; margin: 0; letter-spacing: 1px; color: white;">
+      Únete a <span style="color: #2dd36f;">Geo</span><span style="color: #ff00b7;">Nyx</span>
+    </h1>
+    <p style="color: #aaaaaa; margin-top: 8px; font-size: 15px;">
+      Comienza a dejar tu huella en el mapa.
+    </p>
+  </div>
+
+  <div style="background: #1e1e1e; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    
+    <!-- CAMPO ALIAS -->
+    <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px; margin-bottom: 15px;">
+      <ion-icon name="person-outline" slot="start" style="color: #2dd36f;"></ion-icon>
+      <ion-input 
+        type="text" 
+        placeholder="Alias (Tu nombre en el mapa)" 
+        [(ngModel)]="usuario.alias" 
+        style="color: white; --placeholder-color: #888888;">
+      </ion-input>
+    </ion-item>
+
+    <!-- CAMPO NACIONALIDAD (AHORA ES UN SELECTOR) -->
+    <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px; margin-bottom: 15px;">
+      <ion-icon name="globe-outline" slot="start" style="color: #ffc409;"></ion-icon>
+      <ion-select 
+        placeholder="Selecciona tu país" 
+        [(ngModel)]="usuario.nacionalidad" 
+        interface="action-sheet"
+        style="color: white; width: 100%;">
+        <!-- Generamos las opciones desde la lista del TypeScript -->
+        <ion-select-option *ngFor="let pais of listaPaises" [value]="pais">{{ pais }}</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <!-- CAMPO EMAIL -->
+    <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px; margin-bottom: 15px;">
+      <ion-icon name="mail-outline" slot="start" style="color: #ffffff;"></ion-icon>
+      <ion-input 
+        type="email" 
+        placeholder="Correo Electrónico" 
+        [(ngModel)]="usuario.email" 
+        style="color: white; --placeholder-color: #888888;">
+      </ion-input>
+    </ion-item>
+
+    <!-- CAMPO CONTRASEÑA -->
+    <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px;">
+      <ion-icon name="lock-closed-outline" slot="start" style="color: #ff00b7;"></ion-icon>
+      <ion-input 
+        type="password" 
+        placeholder="Contraseña (mínimo 6 caracteres)" 
+        [(ngModel)]="usuario.password" 
+        style="color: white; --placeholder-color: #888888;">
+      </ion-input>
+    </ion-item>
+
+    <!-- BOTÓN REGISTRARSE -->
+    <ion-button expand="block" style="--background: linear-gradient(90deg, #2dd36f 0%, #ff00b7 100%); --border-radius: 10px; font-weight: bold; height: 50px; margin-top: 35px;" (click)="registrar()">
+      CREAR CUENTA
+    </ion-button>
+  </div>
+
+  <!-- BOTÓN INICIAR SESIÓN -->
+  <div class="ion-text-center" style="margin-top: 30px;">
+    <ion-text style="color: #aaaaaa; font-size: 14px;">¿Ya tienes una cuenta?</ion-text>
+    <br>
+    <ion-button fill="clear" style="color: #2dd36f; font-weight: bold; margin-top: 5px;" (click)="irALogin()">
+      INICIA SESIÓN AQUÍ
+    </ion-button>
+  </div>
+
+</ion-content>

@@ -1,0 +1,112 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar style="--background: #121212;">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/home" style="color: white;"></ion-back-button>
+    </ion-buttons>
+    <ion-title style="color: white; font-weight: bold;">Mis Leyendas</ion-title>
+  </ion-toolbar>
+
+  <ion-toolbar style="--background: #121212; padding: 0 10px 10px 10px;">
+    <ion-searchbar 
+      (ionInput)="buscarLeyenda($event)" 
+      placeholder="Buscar historias o lugares..." 
+      style="--background: #222222; --color: white; --placeholder-color: #aaaaaa; --icon-color: #2dd36f; --clear-button-color: white; --border-radius: 10px; padding: 0;"
+      animated="true">
+    </ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding" style="--background: #1a1a1a;">
+  
+  <div *ngIf="cargando" class="ion-text-center" style="margin-top: 50px; color: white;">
+    Cargando tus historias...
+  </div>
+
+  <div *ngIf="!cargando && leyendasFiltradas.length === 0" class="ion-text-center" style="margin-top: 60px;">
+    <ion-icon name="book-outline" style="font-size: 80px; color: #444444;"></ion-icon>
+    <h2 style="color: white; font-weight: bold;">No hay resultados</h2>
+  </div>
+
+  <ion-list style="background: transparent;" *ngIf="!cargando && leyendasFiltradas.length > 0">
+    <ion-card *ngFor="let leyenda of leyendasFiltradas" style="--background: #222222; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+      
+      <ion-card-header style="padding-bottom: 5px;">
+        <ion-card-title style="color: #2dd36f; font-size: 18px; font-weight: bold;">
+          {{ leyenda.titulo }}
+        </ion-card-title>
+        
+
+        <div style="color: #888888; font-size: 12px; margin-top: 8px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <ion-icon name="location-outline" style="font-size: 14px;"></ion-icon>
+            {{ leyenda.lugar || 'Buscando zona...' }}
+          </span>
+          <span style="display: flex; align-items: center; gap: 4px;" *ngIf="leyenda.fecha_publicacion">
+            <ion-icon name="calendar-outline" style="font-size: 14px;"></ion-icon>
+            {{ leyenda.fecha_publicacion | date:'dd MMM yyyy' }}
+          </span>
+          
+          <span style="display: flex; align-items: center; gap: 4px; color: #ff00b7; font-weight: bold; background: rgba(255,0,183,0.1); padding: 3px 8px; border-radius: 8px;">
+            <ion-icon name="star" style="font-size: 14px;"></ion-icon>
+            {{ leyenda.promedio }}
+          </span>
+        </div>
+      </ion-card-header>
+
+      <ion-card-content>
+        <p style="color: #cccccc; margin-bottom: 5px; margin-top: 10px; font-size: 14px; line-height: 1.5;">
+          {{ leyenda.expandida ? leyenda.historia : (leyenda.historia | slice:0:120) }}
+          <span *ngIf="!leyenda.expandida && leyenda.historia.length > 120">...</span>
+        </p>
+        
+        <div *ngIf="leyenda.historia.length > 120" class="ion-text-left" style="margin-bottom: 15px;">
+          <ion-button fill="clear" size="small" style="color: #ff00b7; --padding-start: 0; font-weight: bold;" (click)="toggleLeerMas(leyenda)">
+            <ion-icon [name]="leyenda.expandida ? 'chevron-up-outline' : 'chevron-down-outline'" slot="end"></ion-icon>
+            {{ leyenda.expandida ? 'LEER MENOS' : 'LEER MÁS' }}
+          </ion-button>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; border-top: 1px solid #333; padding-top: 10px; margin-top: 10px;">
+          <ion-button fill="clear" color="warning" size="small" (click)="abrirEditor(leyenda)" style="font-weight: bold;">
+            <ion-icon name="pencil-outline" slot="start"></ion-icon>
+            EDITAR
+          </ion-button>
+
+          <ion-button fill="clear" color="danger" size="small" (click)="borrarLeyenda(leyenda.id_leyenda)" style="font-weight: bold;">
+            <ion-icon name="trash-outline" slot="start"></ion-icon>
+            ELIMINAR
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </ion-list>
+
+  <ion-modal [isOpen]="mostrarModalEdicion" (didDismiss)="cerrarEditor()" [initialBreakpoint]="0.85" [breakpoints]="[0, 0.85, 1]">
+    <ng-template>
+      <ion-header class="ion-no-border">
+        <ion-toolbar style="--background: #121212; border-bottom: 1px solid #333;">
+          <ion-title style="color: #2dd36f; font-weight: bold;">Editar Leyenda</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="cerrarEditor()" style="color: #aaaaaa; font-weight: bold;">CERRAR</ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      
+      <ion-content class="ion-padding" style="--background: #1a1a1a;">
+        <div style="background: #222222; border-radius: 10px; padding: 5px 15px; margin-bottom: 20px; border: 1px solid #333;">
+          <ion-label style="color: #2dd36f; font-weight: bold; font-size: 14px; display: block; margin-top: 10px;">Título</ion-label>
+          <ion-input type="text" [(ngModel)]="leyendaEditando.titulo" style="color: white; font-size: 16px; margin-top: 5px;"></ion-input>
+        </div>
+
+        <div style="background: #222222; border-radius: 10px; padding: 5px 15px; margin-bottom: 20px; border: 1px solid #333;">
+          <ion-label style="color: #2dd36f; font-weight: bold; font-size: 14px; display: block; margin-top: 10px;">Historia</ion-label>
+          <ion-textarea [(ngModel)]="leyendaEditando.historia" rows="8" style="color: white; font-size: 15px; margin-top: 5px; line-height: 1.5;"></ion-textarea>
+        </div>
+
+        <ion-button expand="block" style="--background: #ff00b7; --border-radius: 10px; font-weight: bold; height: 50px; margin-top: 30px;" (click)="guardarEdicion()">
+          GUARDAR CAMBIOS
+        </ion-button>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+</ion-content>
