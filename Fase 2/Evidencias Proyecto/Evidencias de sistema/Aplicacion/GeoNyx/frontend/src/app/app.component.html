@@ -1,5 +1,6 @@
 <ion-app>
-  <ion-menu content-id="main-content" side="start">
+  <!-- (ionWillOpen) actualiza las variables del localStorage justo antes de mostrar el menú -->
+  <ion-menu content-id="main-content" side="start" (ionWillOpen)="menuAbierto()">
     
     <ion-header class="ion-no-border">
       <ion-toolbar style="--background: #121212; border-bottom: 1px solid #333333;">
@@ -13,11 +14,35 @@
       
       <!-- CABECERA DE PERFIL DINÁMICA -->
       <div style="padding: 30px 20px; text-align: center; background: #222222; border-bottom: 1px solid #333333;">
-        <ion-icon name="person-circle-outline" style="font-size: 80px; color: #555555;"></ion-icon>
+        
+        <!-- AVATAR DINÁMICO -->
+        <div style="width: 80px; height: 80px; margin: 0 auto; display: flex; justify-content: center; align-items: center;">
+          
+          <!-- Icono de Ionic para Modo Invitado (Sin sesión) -->
+          <ion-icon *ngIf="!estaLogueado" name="person-circle" style="font-size: 85px; color: #444444;"></ion-icon>
+          
+          <!-- Contenedor de imágenes para usuarios logueados -->
+          <div *ngIf="estaLogueado" style="width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 2px solid #444; background: #333;">
+            <img *ngIf="planUsuario === 'observador'" src="assets/icon/PlanObservador.png" style="width: 100%; height: 100%; object-fit: cover;" />
+            <img *ngIf="planUsuario === 'explorador'" src="assets/icon/PlanExploradorLector.png" style="width: 100%; height: 100%; object-fit: cover;" />
+            <img *ngIf="planUsuario === 'viajero'" src="assets/icon/ViajeroEscritor.png" style="width: 100%; height: 100%; object-fit: cover;" />
+          </div>
+          
+        </div>
+
         <h2 style="color: white; margin-top: 15px; font-size: 18px; font-weight: bold;">
           {{ estaLogueado ? '¡Hola ' + aliasUsuario + '!' : 'Modo Invitado' }}
         </h2>
-        <p *ngIf="!estaLogueado" style="color: #aaaaaa; font-size: 14px; margin-top: 5px;">
+
+        <!-- INSIGNIA DINÁMICA DE TEXTO (Solo visible si está logueado) -->
+        <div *ngIf="estaLogueado" style="margin-top: 10px;">
+          <ion-chip [color]="obtenerColorInsignia()">
+            <ion-icon name="medal-outline"></ion-icon>
+            <ion-label style="font-weight: bold;">{{ obtenerNombreInsignia() }}</ion-label>
+          </ion-chip>
+        </div>
+
+        <p *ngIf="!estaLogueado" style="color: #aaaaaa; font-size: 14px; margin-top: 10px;">
           Únete para guardar tus misterios e historias locales.
         </p>
       </div>
@@ -41,6 +66,12 @@
           <ion-item button (click)="irAMisHistorias()" style="--background: transparent; --color: white;" lines="none">
             <ion-icon name="book-outline" slot="start" style="color: #2dd36f; font-size: 24px;"></ion-icon>
             <ion-label style="font-size: 16px;">Mis Leyendas</ion-label>
+          </ion-item>
+
+          <!-- NUEVO BOTÓN: MI SUSCRIPCIÓN -->
+          <ion-item button (click)="irASuscripcion()" style="--background: transparent; --color: white;" lines="none">
+            <ion-icon name="diamond-outline" slot="start" style="color: #ff00b7; font-size: 24px;"></ion-icon>
+            <ion-label style="font-size: 16px;">Mi Suscripción</ion-label>
           </ion-item>
 
           <ion-item button (click)="cerrarSesion()" style="--background: transparent;" lines="none">

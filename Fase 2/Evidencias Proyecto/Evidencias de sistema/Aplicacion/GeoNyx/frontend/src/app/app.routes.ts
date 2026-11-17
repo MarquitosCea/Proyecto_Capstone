@@ -26,4 +26,8 @@ export const routes: Routes = [
     path: 'mis-historias',
     loadComponent: () => import('./mis-historias/mis-historias.page').then( m => m.MisHistoriasPage)
   },
+  {
+    path: 'suscripcion',
+    loadComponent: () => import('./suscripcion/suscripcion.page').then( m => m.SuscripcionPage)
+  },
 ];

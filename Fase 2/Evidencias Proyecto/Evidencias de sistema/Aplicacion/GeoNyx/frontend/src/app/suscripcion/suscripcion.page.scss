@@ -1,0 +1,43 @@
+.fondo-planes {
+  --background: #00030d;
+}
+
+.tarjeta-plan {
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  
+  .precio {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin: 10px 0 0 0;
+    
+    .mes {
+      font-size: 1.2rem;
+      font-weight: 400;
+      color: #888;
+    }
+  }
+
+  ion-item {
+    --background: transparent;
+    font-size: 14px;
+    --min-height: 35px;
+  }
+}
+
+.plan-destacado {
+  background: linear-gradient(135deg, #1e2023 0%, #3a3d45 100%);
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(45, 211, 111, 0.3);
+  
+  ion-card-title, ion-card-subtitle, .precio, .mes {
+    color: white !important;
+  }
+
+  .lista-oscura ion-item {
+    --color: white;
+  }
+}
+
+

@@ -6,7 +6,8 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = 'http://127.0.0.1:8000'; 
+  // Asegúrate de que diga localhost y NO 127.0.0.1
+  private apiUrl = 'http://localhost:8000'; 
 
   constructor(private http: HttpClient) { }
 
@@ -26,7 +27,6 @@ export class ApiService {
     return this.http.delete(`${this.apiUrl}/leyendas/${id}`);
   }
 
-  // --- NUEVAS FUNCIONES PARA VALORAR Y REPORTAR ---
   valorarLeyenda(id_leyenda: number, datos: { id_usuario: number, puntuacion: number }): Observable<any> {
     return this.http.post(`${this.apiUrl}/leyendas/${id_leyenda}/valorar`, datos);
   }
@@ -65,5 +65,25 @@ export class ApiService {
 
   actualizarPassword(datos: any) {
     return this.http.post(`${this.apiUrl}/actualizar-password`, datos);
+  }
+
+  actualizarPlanUsuario(id_usuario: number, nuevo_plan: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/actualizar-plan`, {
+      id_usuario: id_usuario,
+      nuevo_plan: nuevo_plan
+    });
+  }
+
+  async obtenerHoraReal(): Promise<number> {
+    try {
+      // Usamos timeapi.io que es más estable en navegadores locales
+      const respuesta = await fetch('https://timeapi.io/api/time/current/zone?timeZone=America/Santiago');
+      if (!respuesta.ok) throw new Error();
+      const datos = await respuesta.json();
+      return datos.hour;
+    } catch (error) {
+      console.warn("Fallo de red al consultar API de tiempo. Usando hora local como respaldo.");
+      return new Date().getHours();
+    }
   }
 }

@@ -21,12 +21,12 @@
   <!-- FORMULARIO DE LOGIN -->
   <div style="background: #1e1e1e; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
     
-    <!-- CAMPO EMAIL -->
+    <!-- CAMPO EMAIL O USUARIO -->
     <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px; margin-bottom: 15px;">
-      <ion-icon name="mail-outline" slot="start" style="color: #2dd36f;"></ion-icon>
+      <ion-icon name="person-outline" slot="start" style="color: #2dd36f;"></ion-icon>
       <ion-input 
-        type="email" 
-        placeholder="Correo Electrónico" 
+        type="text" 
+        placeholder="Usuario o Correo Electrónico" 
         [(ngModel)]="credenciales.email" 
         style="color: white; --placeholder-color: #888888;">
       </ion-input>
@@ -35,12 +35,18 @@
     <!-- CAMPO CONTRASEÑA -->
     <ion-item lines="none" style="--background: #2a2a2a; border-radius: 10px;">
       <ion-icon name="lock-closed-outline" slot="start" style="color: #ff00b7;"></ion-icon>
+      
       <ion-input 
-        type="password" 
+        [type]="mostrarPassword ? 'text' : 'password'" 
         placeholder="Contraseña" 
         [(ngModel)]="credenciales.password" 
         style="color: white; --placeholder-color: #888888;">
       </ion-input>
+      
+      <!-- Botón del ojo para mostrar/ocultar -->
+      <ion-button fill="clear" slot="end" (click)="toggleMostrarPassword()" style="--color: #888888; margin: 0;">
+        <ion-icon [name]="mostrarPassword ? 'eye-off-outline' : 'eye-outline'" slot="icon-only"></ion-icon>
+      </ion-button>
     </ion-item>
 
     <!-- BOTÓN OLVIDÉ CONTRASEÑA -->

@@ -89,3 +89,93 @@
 ::ng-deep .leaflet-control-attribution {
   display: none !important;
 }
+
+/* 6. FILTROS FLOTANTES (CHIPS) */
+.map-filters {
+  position: absolute;
+  top: 10px; 
+  left: 0;
+  width: 100%;
+  z-index: 1000; 
+  background: transparent;
+  
+  .horizontal-scroll {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0 10px;
+    -webkit-overflow-scrolling: touch; 
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  ion-chip {
+    flex-shrink: 0; /* AQUÍ ESTÁ LA MAGIA: Evita que el botón se aplaste */
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    margin-right: 8px;
+    font-weight: 500;
+  }
+}
+
+
+/* --- ESTILOS DEL ACTION SHEET (MENÚ DE IDIOMAS) --- */
+
+/* 1. Resaltar el idioma seleccionado (Verde y Negrita) */
+::ng-deep .idioma-seleccionado {
+  color: #2dd36f !important; /* Verde vibrante de Ionic */
+  font-weight: bold !important;
+}
+
+::ng-deep .idioma-seleccionado .action-sheet-icon {
+  color: #2dd36f !important;
+}
+
+/* 2. Botón Cancelar Rojo */
+::ng-deep .boton-cancelar-rojo {
+  color: #eb445a !important;
+}
+
+::ng-deep .boton-cancelar-rojo .action-sheet-icon {
+  color: #eb445a !important;
+}
+/* --- SPINNER PERSONALIZADO GEONYX --- */
+.spinner-geonyx {
+  width: 65px;          /* Ajusta el tamaño de tu logo aquí */
+  height: auto;
+  margin-bottom: 10px;
+  animation: latido-giratorio 2s ease-in-out infinite; 
+}
+
+/* --- SPINNER PERSONALIZADO GEONYX (SEGURO) --- */
+
+/* 1. Fondo oscuro para la caja de carga */
+::ng-deep .loading-geonyx .loading-wrapper {
+  background: rgba(30, 32, 35, 0.95) !important;
+  color: white !important;
+  border-radius: 16px !important;
+  padding: 25px 20px 20px 20px !important;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+}
+
+/* 2. Inyectamos tu logo justo antes del texto */
+::ng-deep .loading-geonyx .loading-wrapper::before {
+  content: '';
+  display: block;
+  width: 65px;
+  height: 65px;
+  margin: 0 auto 15px auto; /* Centrado y con margen abajo */
+  background: url('/assets/icon/logo-geonyx.png') no-repeat center center;
+  background-size: contain;
+  animation: latido-giratorio 2s ease-in-out infinite; 
+}
+
+/* 3. La Animación */
+@keyframes latido-giratorio {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}

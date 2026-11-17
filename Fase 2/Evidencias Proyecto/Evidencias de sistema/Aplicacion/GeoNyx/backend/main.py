@@ -18,9 +18,9 @@ app = FastAPI(title="GeoNyx API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["http://localhost:8100", "http://127.0.0.1:8100"],
     allow_credentials=True,
-    allow_methods=["*"], 
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -106,33 +106,54 @@ async def registro(user: UsuarioRegistro):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+# Reemplaza SOLO la función @app.post("/login") en tu main.py actual
+
 @app.post("/login")
 async def login(user: UsuarioLogin):
     try:
+        email_para_auth = user.email
+        
+        # 1. Si el usuario escribió su Alias (ej. "CeCe") en lugar de un correo,
+        # buscamos cuál es su correo real en la base de datos
+        if "@" not in email_para_auth:
+            with engine.connect() as connection:
+                query = text("SELECT email FROM usuarios WHERE alias = :alias")
+                resultado = connection.execute(query, {"alias": email_para_auth})
+                db_email = resultado.scalar()
+                if db_email:
+                    email_para_auth = db_email
+                else:
+                    raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
+        # 2. Ahora sí iniciamos sesión en Supabase con el correo real
         response = supabase.auth.sign_in_with_password({
-            "email": user.email,
+            "email": email_para_auth,
             "password": user.password
         })
         
         real_id = None
         alias_usuario = "Explorador"
+        tipo_plan_usuario = "observador"
         
+        # 3. Traemos el resto de sus datos para mandarlos al Frontend
         with engine.connect() as connection:
-            query = text("SELECT id_usuario, alias FROM usuarios WHERE email = :email")
-            resultado = connection.execute(query, {"email": user.email})
+            query = text("SELECT id_usuario, alias, tipo_plan FROM usuarios WHERE email = :email")
+            resultado = connection.execute(query, {"email": email_para_auth})
             db_user = resultado.fetchone()
             if db_user:
                 real_id = db_user[0]
                 alias_usuario = db_user[1]
+                tipo_plan_usuario = db_user[2] if db_user[2] else "observador"
         
         return {
             "mensaje": "Login exitoso",
             "token": response.session.access_token,
             "usuario_id": real_id, 
-            "alias": alias_usuario 
+            "alias": alias_usuario,
+            "tipo_plan": tipo_plan_usuario
         }
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
     
 @app.get("/leyendas")
 def obtener_leyendas():
@@ -234,17 +255,14 @@ def valorar_leyenda(id_leyenda: int, val: ValoracionLeyenda):
                 "puntuacion": val.puntuacion
             })
             connection.commit()
-            
         return {"mensaje": "Valoración guardada exitosamente"}
     except Exception as e:
-        print(f"Error al valorar: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/leyendas/{id_leyenda}/reportar")
 def reportar_leyenda(id_leyenda: int, reporte: ReporteLeyenda):
     try:
         with engine.connect() as connection:
-            # CAMBIO: Usamos id_usuario_denunciante y fecha para coincidir con la base de datos
             query = text("""
                 INSERT INTO reportes (id_leyenda, id_usuario_denunciante, motivo, fecha)
                 VALUES (:id_leyenda, :id_usuario, :motivo, NOW())
@@ -262,9 +280,7 @@ def reportar_leyenda(id_leyenda: int, reporte: ReporteLeyenda):
 @app.get("/leyendas/{id_leyenda}/valoraciones/{id_usuario}")
 def obtener_valoracion(id_leyenda: int, id_usuario: int):
     with engine.connect() as conn:
-        # 1. Buscar promedio global
         res_promedio = conn.execute(text("SELECT AVG(puntuacion) FROM valoraciones WHERE id_leyenda = :id"), {"id": id_leyenda}).scalar()
-        # 2. Buscar voto de este usuario
         res_usuario = conn.execute(text("SELECT puntuacion FROM valoraciones WHERE id_leyenda = :idl AND id_usuario = :idu"), {"idl": id_leyenda, "idu": id_usuario}).scalar()
 
     return {
@@ -275,26 +291,45 @@ def obtener_valoracion(id_leyenda: int, id_usuario: int):
 @app.post("/recuperar-password")
 def recuperar_password(datos: EmailRecuperacion):
     try:
-        # Supabase envía automáticamente el correo de reseteo configurado en tu proyecto
         res = supabase.auth.reset_password_email(datos.email)
         return {"mensaje": "Correo de recuperación enviado exitosamente"}
     except Exception as e:
-        print(f"Error al enviar recuperación: {e}")
         raise HTTPException(status_code=400, detail="Error al procesar la solicitud de recuperación.")
 
 @app.post("/actualizar-password")
 def actualizar_password(datos: NuevaPassword):
     try:
-        # 1. Establecer la sesión temporal con los tokens recibidos
         supabase.auth.set_session(datos.access_token, datos.refresh_token)
-        
-        # 2. Cambiar la contraseña del usuario autenticado
         supabase.auth.update_user({"password": datos.new_password})
-        
-        # 3. Cerrar la sesión temporal para obligarlo a hacer login normal
         supabase.auth.sign_out()
-        
         return {"mensaje": "Contraseña actualizada exitosamente"}
     except Exception as e:
-        print(f"Error actualizando password: {e}")
         raise HTTPException(status_code=400, detail="El enlace ha expirado o es inválido")
+
+class ActualizarPlanRequest(BaseModel):
+    id_usuario: int
+    nuevo_plan: str
+
+@app.post("/actualizar-plan")
+def actualizar_plan(datos: ActualizarPlanRequest):
+    try:
+        with engine.connect() as connection:
+            query = text("""
+                UPDATE usuarios
+                SET tipo_plan = :nuevo_plan
+                WHERE id_usuario = :id_usuario
+            """)
+            resultado = connection.execute(query, {
+                "nuevo_plan": datos.nuevo_plan,
+                "id_usuario": datos.id_usuario
+            })
+            connection.commit()
+            
+            if resultado.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Usuario no encontrado")
+                
+        return {"mensaje": f"Plan actualizado exitosamente a {datos.nuevo_plan}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en base de datos: {str(e)}")

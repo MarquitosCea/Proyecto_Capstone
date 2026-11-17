@@ -9,7 +9,7 @@ import {
   IonItem, IonLabel, IonInput, IonButton, IonIcon, IonText
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { mailOutline, lockClosedOutline } from 'ionicons/icons';
+import { personOutline, lockClosedOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
 
 import { ApiService } from '../services/api';
 
@@ -24,8 +24,9 @@ import { ApiService } from '../services/api';
     IonContent, IonItem, IonLabel, IonInput, IonButton, IonIcon, IonText
   ]
 })
-export class LoginPage {
+export class LoginPage implements OnInit {
   credenciales = { email: '', password: '' };
+  mostrarPassword = false;
 
   constructor(
     private api: ApiService, 
@@ -34,46 +35,45 @@ export class LoginPage {
     private alertCtrl: AlertController,
     private router: Router
   ) {
-    addIcons({ mailOutline, lockClosedOutline });
+    addIcons({ personOutline, lockClosedOutline, eyeOutline, eyeOffOutline });
   }
 
-  // --- NUEVO: Atrapa el token de recuperación apenas carga la página ---
   ngOnInit() {
     const hash = window.location.hash;
     if (hash && hash.includes('type=recovery')) {
-      // Extraemos los tokens de la URL
       const params = new URLSearchParams(hash.replace('#', '?'));
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
       
       if (accessToken && refreshToken) {
         this.pedirNuevaPassword(accessToken, refreshToken);
-        // Limpiamos la URL para que no quede el token gigante a la vista
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }
 
+  toggleMostrarPassword() {
+    this.mostrarPassword = !this.mostrarPassword;
+  }
+
   async ingresar() {
     if (!this.credenciales.email || !this.credenciales.password) {
-      this.mostrarMensaje('Por favor, ingresa tu correo y contraseña.', 'warning');
+      this.mostrarMensaje('Por favor, ingresa tu usuario o correo y contraseña.', 'warning');
       return;
     }
 
     try {
       const res = await this.api.loginUsuario(this.credenciales);
       
-      // Guardamos los datos de sesión con un escudo por si el backend falla
       localStorage.setItem('token', res.token);
       localStorage.setItem('usuario_id', res.usuario_id);
-      
-      // Si res.alias viene vacío (undefined), guardamos 'Explorador' por defecto
-      localStorage.setItem('alias', res.alias || 'Explorador');
+      localStorage.setItem('alias_usuario', res.alias || 'Explorador');
+      localStorage.setItem('tipo_plan', res.tipo_plan || 'observador');
       
       this.mostrarMensaje('¡Bienvenido de vuelta!', 'success');
       this.navCtrl.navigateRoot('/home').then(() => window.location.reload());
     } catch (error) {
-      this.mostrarMensaje('Correo o contraseña incorrectos o no verificados.', 'danger');
+      this.mostrarMensaje('Usuario, correo o contraseña incorrectos.', 'danger');
     }
   }
 
@@ -102,16 +102,15 @@ async recuperarPassword() {
           handler: (data) => {
             if (!data.email) {
               this.mostrarMensaje('Debes ingresar un correo válido.', 'warning');
-              return false; // Evita que la alerta se cierre
+              return false; 
             }
             
-            // Llamamos al servicio para enviar el correo
             this.api.recuperarPassword(data.email).subscribe({
               next: () => {
                 this.mostrarMensaje('Enlace enviado, revisa tu bandeja de entrada o spam.', 'success');
               },
               error: () => {
-                this.mostrarMensaje('No se pudo enviar el correo, Asegurate de que los datos sean correctos.', 'danger');
+                this.mostrarMensaje('No se pudo enviar el correo. Asegúrate de que los datos sean correctos.', 'danger');
               }
             });
             return true;
@@ -147,7 +146,7 @@ async recuperarPassword() {
           handler: (data) => {
             if (!data.password || data.password.length < 6) {
               this.mostrarMensaje('La contraseña debe tener al menos 6 caracteres.', 'warning');
-              return false; // Evita que se cierre la alerta
+              return false; 
             }
             
             this.api.actualizarPassword({
@@ -159,7 +158,7 @@ async recuperarPassword() {
                 this.mostrarMensaje('¡Contraseña actualizada!', 'success');
               },
               error: () => {
-                this.mostrarMensaje('El enlace expiró o es inválido.s', 'danger');
+                this.mostrarMensaje('El enlace expiró o es inválido.', 'danger');
               }
             });
             return true;

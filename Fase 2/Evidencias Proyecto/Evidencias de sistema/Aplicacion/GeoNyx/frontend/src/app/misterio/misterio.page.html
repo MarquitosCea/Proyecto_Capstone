@@ -2,17 +2,23 @@
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-button fill="clear" (click)="abrirMenu()">
-        <ion-icon name="menu-outline" style="font-size: 32px; margin-left: 10px; color: white;"></ion-icon>
+        <ion-icon name="menu-outline" style="font-size: 26px; color: white;"></ion-icon>
       </ion-button>
     </ion-buttons>
     
-    <ion-title class="ion-text-center">
+    <!-- TÍTULO CON PADDING RESTRUCTURADO PARA EVITAR TRUNCADO -->
+    <ion-title style="padding: 0 4px; font-size: 16px; text-align: center;">
       GeoNyx | <span style="color: #ff00b7;">Modo Misterio</span>
     </ion-title>
 
     <ion-buttons slot="end">
+      <!-- BOTÓN RECARGAR GPS (CELESTE OSCURO) -->
+      <ion-button (click)="recargarUbicacion()">
+        <ion-icon name="refresh-outline" style="font-size: 24px; color: #0099cc;"></ion-icon>
+      </ion-button>
+
       <ion-button (click)="irAHistorico()">
-        <ion-icon name="moon-outline" style="font-size: 28px; margin-right: 10px; color: #ff00b7;"></ion-icon>
+        <ion-icon name="moon-outline" style="font-size: 24px; color: #ff00b7;"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
@@ -25,59 +31,52 @@
   <!-- TARJETA DE LECTURA DE LEYENDAS -->
   <ion-card *ngIf="mostrarTarjeta" class="tarjeta-oscura" style="max-height: 75vh; overflow-y: auto; display: flex; flex-direction: column;">
     <ion-card-header>
-      <ion-card-subtitle style="color: #ff00b7;">Escrito por: {{ leyendaSeleccionada.autor }}</ion-card-subtitle>
+      <ion-card-subtitle style="color: #ff00b7;">{{ textosUI[idiomaActivo].escritoPor }}: {{ leyendaSeleccionada.autor }}</ion-card-subtitle>
       <ion-card-title style="color: white; font-weight: bold;">{{ leyendaSeleccionada.titulo }}</ion-card-title>
     </ion-card-header>
 
     <ion-card-content>
 
-      <!-- BOTONES DE LECTURA POR VOZ (MOVIDOS ARRIBA Y SÓLIDOS) -->
-      <div class="ion-text-center ion-margin-bottom">
-        <ion-button size="small" fill="solid"
-                    [style.--background]="idiomaLeyendo === 'es-CL' ? '#ffc409' : '#ff00b7'"
-                    [style.color]="idiomaLeyendo === 'es-CL' ? '#000' : '#fff'"
-                    (click)="idiomaLeyendo === 'es-CL' ? detenerAudio() : reproducirAudio(leyendaSeleccionada.historia, 'es-CL')">
-          <ion-icon [name]="idiomaLeyendo === 'es-CL' ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
-          ES
-        </ion-button>
-        
-        <ion-button size="small" fill="solid"
-                    [style.--background]="idiomaLeyendo === 'en-US' ? '#ffc409' : '#ff00b7'"
-                    [style.color]="idiomaLeyendo === 'en-US' ? '#000' : '#fff'"
-                    class="ion-margin-start"
-                    (click)="idiomaLeyendo === 'en-US' ? detenerAudio() : reproducirAudio(leyendaSeleccionada.historia, 'en-US')">
-          <ion-icon [name]="idiomaLeyendo === 'en-US' ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
-          EN
-        </ion-button>
-      </div>
+  <!-- CONTENEDOR DEL BOTÓN DE IDIOMA (ALINEADO A LA DERECHA) -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 10px; margin-top: -10px;">
+      <ion-button size="small" fill="outline" color="tertiary" (click)="abrirMenuIdiomas()" shape="round">
+        <ion-icon name="language-outline" slot="start"></ion-icon>
+        {{ obtenerNombreIdiomaActivo() }}
+      </ion-button>
+    </div>
       
-      <!-- TEXTO DE LA HISTORIA CON LEER MÁS / MENOS -->
-      <p style="color: #cccccc; margin-top: 8px; font-size: 15px; white-space: pre-wrap; line-height: 1.5;">
-        <ng-container *ngIf="historiaExpandida || leyendaSeleccionada.historia.length <= 200">
-          {{ leyendaSeleccionada.historia }}
-        </ng-container>
-        <ng-container *ngIf="!historiaExpandida && leyendaSeleccionada.historia.length > 200">
-          {{ leyendaSeleccionada.historia | slice:0:200 }}...
-        </ng-container>
-      </p>
+    <!-- TEXTO DE LA HISTORIA ÚNICO (CONTROLADO POR EL IDIOMA) -->
+    <p style="color: #eeeeee; margin-top: 5px; min-height: 40px; font-size: 15px; white-space: pre-wrap; line-height: 1.5;">
+      
+      <!-- Indicador de cargando traducción -->
+      <span *ngIf="traduciendoTexto" style="color: #888; display: flex; align-items: center;">
+        <ion-spinner name="dots" color="primary" style="margin-right: 8px;"></ion-spinner> 
+        <i>Traduciendo...</i>
+      </span>
+      
+      <!-- Texto base o traducido -->
+      <span *ngIf="!traduciendoTexto && leyendaSeleccionada.traducciones && leyendaSeleccionada.traducciones[idiomaActivo]">
+        {{ historiaExpandida ? leyendaSeleccionada.traducciones[idiomaActivo].completa : leyendaSeleccionada.traducciones[idiomaActivo].corta }}
+      </span>
+    </p>
 
-      <!-- BOTÓN LEER MÁS / MENOS GRANDE (ESTILO MODO HISTÓRICO) -->
-      <ion-row class="ion-margin-top" *ngIf="leyendaSeleccionada.historia?.length > 200">
-        <ion-col size="12">
-          <ion-button expand="block" fill="solid" style="--background: #ff00b7; --color: white; font-weight: bold;" (click)="historiaExpandida = !historiaExpandida">
-            <ion-icon name="book-outline" slot="start"></ion-icon>
-            LEER {{ historiaExpandida ? 'MENOS' : 'MÁS' }}
-          </ion-button>
-        </ion-col>
-      </ion-row>
+    <!-- BOTÓN LEER MÁS / MENOS GRANDE (DINÁMICO) -->
+    <ion-row class="ion-margin-top" *ngIf="leyendaSeleccionada.historia?.length > 100">
+      <ion-col size="12">
+        <ion-button expand="block" fill="solid" style="--background: #ff00b7; --color: white; font-weight: bold;" (click)="historiaExpandida = !historiaExpandida">
+          <ion-icon name="book-outline" slot="start"></ion-icon>
+          {{ historiaExpandida ? textosUI[idiomaActivo].leerMenos : textosUI[idiomaActivo].leerMas }}
+        </ion-button>
+      </ion-col>
+    </ion-row>
 
       <!-- BOTONES DE EDICIÓN (SOLO APARECEN SI ES TU LEYENDA) -->
       <div *ngIf="esMiLeyenda" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
         <ion-button fill="outline" color="warning" size="small" (click)="editarLeyenda()">
-          <ion-icon name="pencil-outline" slot="start"></ion-icon> Editar
+          <ion-icon name="pencil-outline" slot="start"></ion-icon> {{ textosUI[idiomaActivo].editar }}
         </ion-button>
         <ion-button fill="outline" color="danger" size="small" (click)="borrarLeyenda()">
-          <ion-icon name="trash-outline" slot="start"></ion-icon> Borrar
+          <ion-icon name="trash-outline" slot="start"></ion-icon> {{ textosUI[idiomaActivo].borrar }}
         </ion-button>
       </div>
 
@@ -87,17 +86,17 @@
       <div *ngIf="!esMiLeyenda" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px; text-align: center;">
         
         <p style="color: #ff00b7; font-size: 14px; margin-bottom: 10px;">
-          <strong>¿Qué te pareció este misterio?</strong>
+          <strong>{{ textosUI[idiomaActivo].queParecio }}</strong>
         </p>
 
         <span style="background: rgba(255,0,183,0.2); color: #ff00b7; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px;">
-          <ion-icon name="star"></ion-icon> Promedio: {{ promedioActual }}
+          <ion-icon name="star"></ion-icon> {{ textosUI[idiomaActivo].promedio }}: {{ promedioActual }}
         </span>
 
 <!-- Aquí van las 5 estrellas interactivas que ya tienes -->
         
-        <!-- LAS 5 ESTRELLAS INTERACTIVAS -->
-        <div style="margin-bottom: 15px; display: flex; justify-content: center;">
+<!-- LAS 5 ESTRELLAS INTERACTIVAS (Escritas una a una para evitar error de NgFor) -->
+        <div style="margin-top: 15px; margin-bottom: 15px; display: flex; justify-content: center;">
           <ion-icon [name]="puntuacionActual >= 1 ? 'star' : 'star-outline'" (click)="valorarHistoria(1)" style="font-size: 36px; color: #ff00b7; margin: 0 4px; cursor: pointer; text-shadow: 0 0 5px #ff00b7;"></ion-icon>
           <ion-icon [name]="puntuacionActual >= 2 ? 'star' : 'star-outline'" (click)="valorarHistoria(2)" style="font-size: 36px; color: #ff00b7; margin: 0 4px; cursor: pointer; text-shadow: 0 0 5px #ff00b7;"></ion-icon>
           <ion-icon [name]="puntuacionActual >= 3 ? 'star' : 'star-outline'" (click)="valorarHistoria(3)" style="font-size: 36px; color: #ff00b7; margin: 0 4px; cursor: pointer; text-shadow: 0 0 5px #ff00b7;"></ion-icon>
@@ -105,10 +104,20 @@
           <ion-icon [name]="puntuacionActual >= 5 ? 'star' : 'star-outline'" (click)="valorarHistoria(5)" style="font-size: 36px; color: #ff00b7; margin: 0 4px; cursor: pointer; text-shadow: 0 0 5px #ff00b7;"></ion-icon>
         </div>
 
+        <!-- ========================================== -->
+        <!-- NUEVO: BOTÓN DE AUDIO MODO MISTERIO          -->
+        <!-- ========================================== -->
+        <div class="ion-text-center" style="margin-bottom: 15px;">
+          <ion-button size="small" [color]="leyendoAudio ? 'warning' : 'primary'" (click)="toggleAudio()" shape="round">
+            <ion-icon [name]="leyendoAudio ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
+            {{ leyendoAudio ? 'Detener Audio' : 'Escuchar en ' + obtenerNombreIdiomaActivo() }}
+          </ion-button>
+        </div>
+
         <!-- BOTÓN REPORTAR -->
         <ion-button fill="clear" style="color: #ff4444; font-weight: bold; font-size: 14px;" (click)="reportarHistoria()">
           <ion-icon name="warning-outline" slot="start"></ion-icon>
-          Reportar historia
+          {{ textosUI[idiomaActivo].reportar }}
         </ion-button>
 
       </div>
@@ -116,7 +125,7 @@
 
       <!-- BOTON CERRAR -->
       <div class="ion-text-center ion-margin-top">
-        <ion-button fill="clear" color="medium" (click)="cerrarTarjeta()">CERRAR</ion-button>
+        <ion-button fill="clear" color="medium" (click)="cerrarTarjeta()">{{ textosUI[idiomaActivo].cerrar }}</ion-button>
       </div>
 
     </ion-card-content>
@@ -152,27 +161,43 @@
       
       <ion-content class="ion-padding" color="white" back-ground="">
         
+        <!-- CAMPO 1: TÍTULO -->
         <ion-item color="white" back-ground="black" lines="full">
-          <ion-label position="stacked">Título del suceso</ion-label>
-          <ion-input type="text" [(ngModel)]="nuevaLeyenda.titulo" placeholder="Ej: El fantasma"></ion-input>
+          <ion-label position="stacked">Título del suceso (Máx. 150 caracteres)</ion-label>
+          <ion-input type="text" [(ngModel)]="nuevaLeyenda.titulo" placeholder="Ej: El fantasma" [maxlength]="150"></ion-input>
           <ion-button fill="clear" slot="end" class="btn-microfono" (click)="iniciarReconocimientoVoz('titulo')">
             <ion-icon [name]="escuchandoTitulo ? 'mic' : 'mic-outline'" [color]="escuchandoTitulo ? 'danger' : 'tertiary'" style="font-size: 28px;"></ion-icon>
           </ion-button>
         </ion-item>
+
+        <!-- Contador visual de caracteres para el título -->
+        <p style="text-align: right; font-size: 12px; color: #888; margin-top: 5px; margin-bottom: 5px;">
+          {{ nuevaLeyenda.titulo?.length || 0 }} / 150
+        </p>
+
         <p *ngIf="escuchandoTitulo" style="color: #eb445a; text-align: center; font-weight: bold; margin-top: 0; font-size: 14px;">Escuchando título...</p>
 
+        <!-- CAMPO 2: HISTORIA (Con límite dinámico) -->
         <ion-item color="white" back-ground="black" lines="full" class="ion-margin-top">
-          <ion-label position="stacked">Historia</ion-label>
-          <ion-textarea [(ngModel)]="nuevaLeyenda.historia" placeholder="Escribe o dicta tu leyenda..." rows="6"></ion-textarea>
+          <ion-label position="stacked">Historia (Máx. {{ maxCaracteres }} caracteres)</ion-label>
+          <ion-textarea [(ngModel)]="nuevaLeyenda.historia" placeholder="Escribe o dicta tu leyenda..." rows="6" [maxlength]="maxCaracteres"></ion-textarea>
           <ion-button fill="clear" slot="end" class="btn-microfono" (click)="iniciarReconocimientoVoz('historia')">
             <ion-icon [name]="escuchandoHistoria ? 'mic' : 'mic-outline'" [color]="escuchandoHistoria ? 'danger' : 'tertiary'" style="font-size: 28px;"></ion-icon>
           </ion-button>
         </ion-item>
+        
+        <!-- Contador visual de caracteres -->
+        <p style="text-align: right; font-size: 12px; color: #888; margin-top: 5px;">
+          {{ nuevaLeyenda.historia?.length || 0 }} / {{ maxCaracteres }}
+        </p>
+
         <p *ngIf="escuchandoHistoria" style="color: #eb445a; text-align: center; font-weight: bold; margin-top: 0; font-size: 14px;">Escuchando historia...</p>
 
+        <!-- BOTÓN GUARDAR -->
         <ion-button expand="block" class="ion-margin-top btn-publicar" (click)="publicarDesdeModal()">
           GUARDAR LEYENDA
         </ion-button>
+        
       </ion-content>
     </ng-template>
   </ion-modal>
