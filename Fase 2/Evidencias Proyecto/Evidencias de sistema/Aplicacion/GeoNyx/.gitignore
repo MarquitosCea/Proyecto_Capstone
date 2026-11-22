@@ -1,0 +1,24 @@
+# Dependencias y entornos
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Caches de build
+.angular/
+dist/
+build/
+
+# Editores
+.vscode/
+.idea/
+
+# Configuracion local y secretos
+.env
+.env.*
+!.env.example
+
+# Sistema
+.DS_Store
+Thumbs.db
