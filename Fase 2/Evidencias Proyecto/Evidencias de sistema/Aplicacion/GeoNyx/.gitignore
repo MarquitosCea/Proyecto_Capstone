@@ -9,6 +9,9 @@ __pycache__/
 .angular/
 dist/
 build/
+.gradle/
+.idea/
+local.properties
 
 # Editores
 .vscode/

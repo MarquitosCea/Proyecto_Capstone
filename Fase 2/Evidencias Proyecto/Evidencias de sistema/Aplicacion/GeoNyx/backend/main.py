@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 from supabase import create_client, Client
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -18,7 +20,22 @@ app = FastAPI(title="GeoNyx API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8100", "http://127.0.0.1:8100"],
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+origins = [
+    "http://localhost:8100",   # Pruebas web con ionic serve
+    "https://localhost",       # App compilada en Android (Capacitor)
+    "http://localhost",        # Fallback local en Android
+    "capacitor://localhost",   # App compilada en iOS
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,     # Si necesitas abrirlo a cualquier dominio web temporalmente, cambia esto por ["*"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
