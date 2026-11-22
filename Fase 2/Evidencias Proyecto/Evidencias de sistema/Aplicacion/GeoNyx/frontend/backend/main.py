@@ -18,7 +18,7 @@ app = FastAPI(title="GeoNyx API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8100", "http://127.0.0.1:8100"],
+    allow_origins=["http://[https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com):8100", "http://127.0.0.1:8100"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

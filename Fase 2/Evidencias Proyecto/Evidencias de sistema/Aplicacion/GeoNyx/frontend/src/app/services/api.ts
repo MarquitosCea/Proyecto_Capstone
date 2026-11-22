@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -6,8 +6,8 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class ApiService {
-  // Asegúrate de que diga localhost y NO 127.0.0.1
-  private apiUrl = 'http://localhost:8000'; 
+  // Asegúrate de que diga [https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com) y NO 127.0.0.1
+  private apiUrl = 'https://proyecto-capstone-1-wm9z.onrender.com'; 
 
   constructor(private http: HttpClient) { }
 

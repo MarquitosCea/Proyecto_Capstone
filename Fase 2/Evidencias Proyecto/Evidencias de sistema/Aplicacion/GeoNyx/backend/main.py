@@ -3,13 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import os
 from supabase import create_client, Client
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import os
 
 load_dotenv()
+
 DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -18,24 +20,16 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="GeoNyx API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 origins = [
-    "http://localhost:8100",   # Pruebas web con ionic serve
-    "https://localhost",       # App compilada en Android (Capacitor)
-    "http://localhost",        # Fallback local en Android
-    "capacitor://localhost",   # App compilada en iOS
+    "http://[https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com):8100",   # Pruebas web con ionic serve
+    "https://[https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com)",       # App compilada en Android (Capacitor)
+    "http://[https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com)",        # Fallback local en Android
+    "capacitor://[https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com)",   # App compilada en iOS
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,     # Si necesitas abrirlo a cualquier dominio web temporalmente, cambia esto por ["*"]
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
