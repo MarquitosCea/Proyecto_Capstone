@@ -117,67 +117,91 @@ ion-loading.loading-geonyx {
   touch-action: manipulation;
 }
 
-/* Rotación del mapa */
-#map-container,
-#map-misterio {
-  transform-origin: center center;
-  will-change: transform;
-}
-
-/* Alertas, action sheets y toasts con identidad GeoNyx */
+/* Alertas con identidad GeoNyx: se fuerza color real porque Ionic usa sus propias variables */
 ion-alert {
   --background: #0d1322 !important;
-  --color: #f4f7ff !important;
-  --header-color: #ffffff !important;
-  --sub-header-color: #9fb3d9 !important;
-  --message-color: #dbe4ff !important;
-  --button-color: #7df9ff !important;
-  --button-background: transparent !important;
   --backdrop-opacity: 0.72 !important;
-  font-family: inherit;
+  font-family: inherit !important;
 
   .alert-wrapper {
-    border: 1px solid rgba(125, 249, 255, 0.28) !important;
+    background: #0d1322 !important;
+    border: 1px solid rgba(125, 249, 255, 0.35) !important;
     border-radius: 18px !important;
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.65) !important;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7) !important;
+    overflow: hidden !important;
   }
 
-  .alert-title {
+  .alert-head {
+    background: linear-gradient(135deg, rgba(125, 249, 255, 0.12), rgba(255, 79, 195, 0.10)) !important;
+    border-bottom: 1px solid rgba(125, 249, 255, 0.18) !important;
+  }
+
+  .alert-title,
+  .alert-sub-title {
+    color: #ffffff !important;
     font-weight: 800 !important;
     letter-spacing: 0.3px !important;
   }
 
   .alert-message {
-    font-size: 14px !important;
-    line-height: 1.55 !important;
+    color: #eaf1ff !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
     white-space: pre-line !important;
+    text-align: left !important;
   }
 
-  .alert-button {
-    font-weight: 700 !important;
+  .alert-button-group {
+    background: transparent !important;
+    border-top: 1px solid rgba(125, 249, 255, 0.15) !important;
+  }
+
+  .alert-button,
+  .alert-button.ion-focused,
+  .alert-button:focus,
+  .alert-button:active,
+  .alert-button:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #7df9ff !important;
+    font-weight: 800 !important;
     text-transform: none !important;
+    letter-spacing: 0.3px !important;
+    box-shadow: none !important;
   }
 
   .alert-button:last-child {
-    color: #ff4fc3 !important;
+    color: #ff7ad9 !important;
   }
 }
 
 ion-action-sheet {
   --background: #0d1322 !important;
-  --color: #f4f7ff !important;
-  --header-color: #ffffff !important;
-  --message-color: #b9c7e6 !important;
-  --button-color: #e8f1ff !important;
-  --button-background: #131b2e !important;
   --backdrop-opacity: 0.72 !important;
 
-  .action-sheet-title {
+  .action-sheet-wrapper {
+    background: #0d1322 !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(125, 249, 255, 0.3) !important;
+    overflow: hidden !important;
+  }
+
+  .action-sheet-title,
+  .action-sheet-sub-title {
+    color: #ffffff !important;
     font-weight: 800 !important;
   }
 
-  .action-sheet-button {
+  .action-sheet-button,
+  .action-sheet-button.ion-focused {
+    background: #131b2e !important;
+    background-color: #131b2e !important;
+    color: #eaf1ff !important;
     text-transform: none !important;
+  }
+
+  .action-sheet-button:last-child {
+    color: #ff7ad9 !important;
   }
 }
 
@@ -189,99 +213,19 @@ ion-toast {
   --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55) !important;
 }
 
-/* Brújula y controles de rotación del mapa */
-.controles-brujula {
-  position: absolute;
-  bottom: 92px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  pointer-events: auto;
-}
+ion-loading.loading-geonyx {
+  --background: rgba(8, 13, 24, 0.94) !important;
+  --color: #eaf1ff !important;
+  --backdrop-opacity: 0.75 !important;
 
-.brujula {
-  position: relative;
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #1c2740 0%, #080d18 75%);
-  border: 2px solid rgba(125, 249, 255, 0.65);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(125, 249, 255, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-}
+  .loading-wrapper {
+    border: 1px solid rgba(125, 249, 255, 0.3) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6) !important;
+  }
 
-.aguja-brujula {
-  position: absolute;
-  inset: 6px;
-  transition: transform 0.25s ease-out;
-}
-
-.aguja-brujula::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 3px;
-  width: 0;
-  height: 0;
-  transform: translateX(-50%);
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 19px solid #ff4fc3;
-  filter: drop-shadow(0 0 4px rgba(255, 79, 195, 0.8));
-}
-
-.aguja-brujula::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 3px;
-  width: 0;
-  height: 0;
-  transform: translateX(-50%);
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 16px solid #7df9ff;
-}
-
-.texto-brujula {
-  position: relative;
-  z-index: 2;
-  font-size: 10px;
-  font-weight: 800;
-  color: #ffffff;
-  background: rgba(0, 0, 0, 0.55);
-  border-radius: 8px;
-  padding: 1px 4px;
-  margin-top: 16px;
-}
-
-.botones-giro {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.botones-giro button {
-  width: 34px;
-  height: 30px;
-  border: 1px solid rgba(125, 249, 255, 0.45);
-  border-radius: 10px;
-  background: rgba(8, 13, 24, 0.9);
-  color: #7df9ff;
-  font-size: 18px;
-  line-height: 1;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
-}
-
-.botones-giro button:active {
-  background: rgba(125, 249, 255, 0.2);
+  .loading-content {
+    color: #eaf1ff !important;
+    font-weight: 600 !important;
+  }
 }

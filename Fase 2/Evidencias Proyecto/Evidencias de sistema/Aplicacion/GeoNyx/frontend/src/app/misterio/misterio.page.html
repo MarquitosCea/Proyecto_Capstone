@@ -28,18 +28,6 @@
   
   <div id="map-misterio"></div>
 
-  <!-- BRÚJULA Y GIRO DEL MAPA -->
-  <div class="controles-brujula" *ngIf="!mostrarTarjeta">
-    <div class="brujula" (click)="rotarMapa(-anguloMapa)" [attr.aria-label]="'Volver al norte. Dirección actual: ' + direccionNorte">
-      <div class="aguja-brujula" [style.transform]="'rotate(' + anguloMapa + 'deg)'"></div>
-      <span class="texto-brujula">{{ direccionNorte }}</span>
-    </div>
-    <div class="botones-giro">
-      <button type="button" (click)="rotarMapa(-90)" aria-label="Girar mapa a la izquierda">↺</button>
-      <button type="button" (click)="rotarMapa(90)" aria-label="Girar mapa a la derecha">↻</button>
-    </div>
-  </div>
-
   <!-- TARJETA DE LECTURA DE LEYENDAS -->
   <ion-card *ngIf="mostrarTarjeta" class="tarjeta-oscura" style="max-height: 75vh; overflow-y: auto; display: flex; flex-direction: column;">
     <ion-card-header>

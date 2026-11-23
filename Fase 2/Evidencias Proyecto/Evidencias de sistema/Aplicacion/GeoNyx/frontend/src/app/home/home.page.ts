@@ -17,9 +17,8 @@ import {
 import * as L from 'leaflet';
 import { NgIf, NgClass, NgFor } from '@angular/common';
 import { CapacitorHttp } from '@capacitor/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { ApiService } from '../services/api';
-import { instalarParcheRotacionMapa, establecerAnguloMapa, restaurarParcheRotacionMapa } from '../services/map-rotation';
 
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
 const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
@@ -53,8 +52,6 @@ export class HomePage implements OnInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private debeIniciarMapa: boolean = false;
   private vistaVisible: boolean = false;
-  private readonly idMapa: string = 'map-container';
-  anguloMapa: number = 0;
   
   mostrarTarjeta: boolean = false;
   mostrarHistoriaCompleta: boolean = false;
@@ -159,7 +156,6 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    instalarParcheRotacionMapa();
     const planGuardado = localStorage.getItem('tipo_plan');
     if (planGuardado) {
       this.tipoPlanUsuario = planGuardado.toLowerCase();
@@ -174,7 +170,6 @@ export class HomePage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.destruirMapa();
-    restaurarParcheRotacionMapa();
   }
 
   private iniciarMapaSiCorresponde() {
@@ -185,10 +180,6 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   private destruirMapa() {
-    const contenedor = document.getElementById(this.idMapa);
-    if (contenedor) contenedor.style.transform = '';
-    this.anguloMapa = 0;
-    establecerAnguloMapa(0);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     if (this.map) {
@@ -445,8 +436,24 @@ export class HomePage implements OnInit, OnDestroy {
     await loading.present();
 
     try {
-      // Overpass se consulta desde el backend: el WebView recibía 406 sin User-Agent.
-      const data: any = await firstValueFrom(this.api.getBanos(miLat, miLng));
+      let data: any;
+      try {
+        // Primero el backend; si Render no alcanza Overpass, se usa el plugin nativo.
+        data = await firstValueFrom(this.api.getBanos(miLat, miLng).pipe(timeout(18000)));
+      } catch (errorBackend) {
+        console.warn('Backend /banos no respondió, usando Overpass directo:', errorBackend);
+        const consulta =
+          `[out:json][timeout:25];` +
+          `(nwr["amenity"="toilets"](around:4000,${miLat},${miLng});` +
+          `nwr["amenity"="fuel"](around:4000,${miLat},${miLng});` +
+          `nwr["shop"="mall"](around:4000,${miLat},${miLng}););out center;`;
+        const url = 'https://ovp.dresel.systems/api-sa/interpreter?data=' + encodeURIComponent(consulta);
+        const resNativa = await CapacitorHttp.get({
+          url,
+          headers: { 'User-Agent': 'GeoNyx/1.0', 'Accept': 'application/json' }
+        });
+        data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
+      }
 
       if (data?.elements && data.elements.length > 0) {
         const iconoBano = L.divIcon({
@@ -502,7 +509,7 @@ export class HomePage implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error("Error buscando servicios en Overpass:", error);
-      this.mostrarMensaje('Hubo un error al conectar con el servicio de mapas.');
+      this.mostrarMensaje('No pudimos cargar los baños cercanos.\nRevisa tu conexión e inténtalo de nuevo.');
       this.aplicarFiltro('todos'); 
     } finally {
       await loading.dismiss();
@@ -626,25 +633,6 @@ export class HomePage implements OnInit, OnDestroy {
   obtenerNombreIdiomaActivo(): string {
     const id = this.idiomasDisponibles.find(i => i.codigo === this.idiomaActivo);
     return id ? id.nombre : 'Español';
-  }
-
-  get direccionNorte(): string {
-    const grados = ((Math.round(this.anguloMapa) % 360) + 360) % 360;
-    const nombres = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-    return nombres[Math.round(grados / 45) % 8];
-  }
-
-  rotarMapa(grados: number) {
-    this.anguloMapa = (this.anguloMapa + grados) % 360;
-    if (this.anguloMapa > 180) this.anguloMapa -= 360;
-    if (this.anguloMapa < -180) this.anguloMapa += 360;
-
-    const contenedor = document.getElementById(this.idMapa);
-    if (contenedor) {
-      contenedor.style.transform = `rotate(${this.anguloMapa}deg)`;
-    }
-    establecerAnguloMapa(this.anguloMapa);
-    this.cdr.detectChanges();
   }
 
   async cambiarIdiomaTexto(codigoIdioma: string) {

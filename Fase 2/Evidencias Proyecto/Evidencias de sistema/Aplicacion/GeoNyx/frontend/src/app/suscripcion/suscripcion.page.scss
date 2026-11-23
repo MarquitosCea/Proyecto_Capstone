@@ -16,8 +16,8 @@ ion-toolbar {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
 
   ion-card-header {
-    background: linear-gradient(135deg, rgba(125, 249, 255, 0.10), rgba(255, 0, 183, 0.08));
-    border-bottom: 1px solid rgba(125, 249, 255, 0.14);
+    background: linear-gradient(135deg, rgba(125, 249, 255, 0.10), rgba(255, 0, 183, 0.08)) !important;
+    border-bottom: 1px solid rgba(125, 249, 255, 0.14) !important;
   }
 
   ion-card-subtitle {
@@ -44,14 +44,25 @@ ion-toolbar {
     }
   }
 
+  /* La lista de ventajas debe ser oscura: Ionic pone fondo blanco en ion-item */
+  ion-card-content,
+  ion-list,
+  ion-item,
+  ion-item .item-native,
+  ion-label {
+    background: transparent !important;
+    background-color: transparent !important;
+    --background: transparent !important;
+    --color: #eaf1ff !important;
+    color: #eaf1ff !important;
+  }
+
   ion-item {
-    --background: transparent;
-    --color: #e6edfb;
     font-size: 14px;
     --min-height: 38px;
 
     ion-label {
-      color: #e6edfb !important;
+      color: #eaf1ff !important;
     }
 
     ion-icon {
@@ -76,19 +87,14 @@ ion-toolbar {
     color: #ff7ad9 !important;
   }
 
-  .precio {
-    color: #ffffff !important;
-  }
-
   ion-card-title, ion-card-subtitle, .precio, .mes {
     color: #ffffff !important;
   }
 
-  .lista-oscura ion-item {
-    --color: #ffffff;
-
-    ion-label {
-      color: #ffffff !important;
-    }
+  ion-item,
+  ion-item .item-native,
+  ion-label {
+    --color: #ffffff !important;
+    color: #ffffff !important;
   }
 }

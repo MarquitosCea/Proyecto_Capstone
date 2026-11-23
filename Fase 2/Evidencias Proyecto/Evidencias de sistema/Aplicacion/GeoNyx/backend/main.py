@@ -199,9 +199,11 @@ def buscar_banos(lat: float, lon: float):
         "nwr[\"shop\"=\"mall\"](around:4000," + str(lat) + "," + str(lon) + "););"
         "out center;"
     )
+    # dresel.systems tiene un extracto de Sudamérica y responde mejor desde Render.
     servidores = [
+        "https://ovp.dresel.systems/api-sa/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
         "https://overpass-api.de/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter",
     ]
     errores = []
     for servidor in servidores:
@@ -211,11 +213,13 @@ def buscar_banos(lat: float, lon: float):
                 "User-Agent": "GeoNyx/1.0",
                 "Accept": "application/json",
             })
-            with urllib.request.urlopen(peticion, timeout=30) as respuesta:
+            with urllib.request.urlopen(peticion, timeout=25) as respuesta:
                 datos = json.loads(respuesta.read().decode("utf-8"))
-            return {"elements": datos.get("elements", [])}
+            if isinstance(datos, dict) and "elements" in datos:
+                return {"elements": datos.get("elements", [])}
+            raise ValueError("Respuesta inválida de Overpass")
         except Exception as exc:
-            errores.append(str(exc))
+            errores.append(servidor + ": " + str(exc))
 
     raise HTTPException(status_code=502, detail="No se pudo consultar Overpass: " + "; ".join(errores))
 
