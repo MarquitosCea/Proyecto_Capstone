@@ -29,6 +29,12 @@ export class ApiService {
     return this.http.post(`${this.apiUrl}/tts`, { texto, idioma }, { responseType: 'blob' });
   }
 
+  getBanos(lat: number, lon: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/banos`, {
+      params: { lat: String(lat), lon: String(lon) }
+    });
+  }
+
   getLeyendas(): Observable<any> {
     return this.http.get(`${this.apiUrl}/leyendas`);
   }

@@ -189,6 +189,37 @@ def wikipedia(pageid: int):
         raise HTTPException(status_code=502, detail="Error consultando Wikipedia: " + str(exc))
 
 
+@app.get("/banos")
+def buscar_banos(lat: float, lon: float):
+    """Busca baños, gasolineras y malls cerca de un punto usando Overpass."""
+    consulta = (
+        "[out:json][timeout:25];"
+        "(nwr[\"amenity\"=\"toilets\"](around:4000," + str(lat) + "," + str(lon) + ");"
+        "nwr[\"amenity\"=\"fuel\"](around:4000," + str(lat) + "," + str(lon) + ");"
+        "nwr[\"shop\"=\"mall\"](around:4000," + str(lat) + "," + str(lon) + "););"
+        "out center;"
+    )
+    servidores = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+    ]
+    errores = []
+    for servidor in servidores:
+        url = servidor + "?data=" + urllib.parse.quote(consulta)
+        try:
+            peticion = urllib.request.Request(url, headers={
+                "User-Agent": "GeoNyx/1.0",
+                "Accept": "application/json",
+            })
+            with urllib.request.urlopen(peticion, timeout=30) as respuesta:
+                datos = json.loads(respuesta.read().decode("utf-8"))
+            return {"elements": datos.get("elements", [])}
+        except Exception as exc:
+            errores.append(str(exc))
+
+    raise HTTPException(status_code=502, detail="No se pudo consultar Overpass: " + "; ".join(errores))
+
+
 @app.post("/tts")
 def texto_a_voz(datos: SolicitudTTS):
     """Convierte texto a MP3 en el servidor (los WebView de Android no siempre tienen speechSynthesis)."""

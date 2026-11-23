@@ -28,6 +28,18 @@
   
   <div id="map-misterio"></div>
 
+  <!-- BRÚJULA Y GIRO DEL MAPA -->
+  <div class="controles-brujula" *ngIf="!mostrarTarjeta">
+    <div class="brujula" (click)="rotarMapa(-anguloMapa)" [attr.aria-label]="'Volver al norte. Dirección actual: ' + direccionNorte">
+      <div class="aguja-brujula" [style.transform]="'rotate(' + anguloMapa + 'deg)'"></div>
+      <span class="texto-brujula">{{ direccionNorte }}</span>
+    </div>
+    <div class="botones-giro">
+      <button type="button" (click)="rotarMapa(-90)" aria-label="Girar mapa a la izquierda">↺</button>
+      <button type="button" (click)="rotarMapa(90)" aria-label="Girar mapa a la derecha">↻</button>
+    </div>
+  </div>
+
   <!-- TARJETA DE LECTURA DE LEYENDAS -->
   <ion-card *ngIf="mostrarTarjeta" class="tarjeta-oscura" style="max-height: 75vh; overflow-y: auto; display: flex; flex-direction: column;">
     <ion-card-header>
@@ -70,6 +82,14 @@
       </ion-col>
     </ion-row>
 
+      <!-- BOTÓN DE AUDIO (DISPONIBLE TAMBIÉN EN TUS PROPIAS LEYENDAS) -->
+      <div class="ion-text-center" style="margin: 15px 0 5px 0;">
+        <ion-button size="small" [color]="leyendoAudio ? 'warning' : 'primary'" (click)="toggleAudio()" shape="round">
+          <ion-icon [name]="leyendoAudio ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
+          {{ leyendoAudio ? 'Detener Audio' : 'Escuchar en ' + obtenerNombreIdiomaActivo() }}
+        </ion-button>
+      </div>
+
       <!-- BOTONES DE EDICIÓN (SOLO APARECEN SI ES TU LEYENDA) -->
       <div *ngIf="esMiLeyenda" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
         <ion-button fill="outline" color="warning" size="small" (click)="editarLeyenda()">
@@ -102,16 +122,6 @@
           <ion-icon [name]="puntuacionActual >= 3 ? 'star' : 'star-outline'" (click)="valorarHistoria(3)" style="font-size: 36px; color: #ff00b7; margin: 0 4px; cursor: pointer; text-shadow: 0 0 5px #ff00b7;"></ion-icon>
           <ion-icon [name]="puntuacionActual >= 4 ? 'star' : 'star-outline'" (click)="valorarHistoria(4)" style="font-size: 36px; color: #ff00b7; margin: 0 4px; cursor: pointer; text-shadow: 0 0 5px #ff00b7;"></ion-icon>
           <ion-icon [name]="puntuacionActual >= 5 ? 'star' : 'star-outline'" (click)="valorarHistoria(5)" style="font-size: 36px; color: #ff00b7; margin: 0 4px; cursor: pointer; text-shadow: 0 0 5px #ff00b7;"></ion-icon>
-        </div>
-
-        <!-- ========================================== -->
-        <!-- NUEVO: BOTÓN DE AUDIO MODO MISTERIO          -->
-        <!-- ========================================== -->
-        <div class="ion-text-center" style="margin-bottom: 15px;">
-          <ion-button size="small" [color]="leyendoAudio ? 'warning' : 'primary'" (click)="toggleAudio()" shape="round">
-            <ion-icon [name]="leyendoAudio ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
-            {{ leyendoAudio ? 'Detener Audio' : 'Escuchar en ' + obtenerNombreIdiomaActivo() }}
-          </ion-button>
         </div>
 
         <!-- BOTÓN REPORTAR -->

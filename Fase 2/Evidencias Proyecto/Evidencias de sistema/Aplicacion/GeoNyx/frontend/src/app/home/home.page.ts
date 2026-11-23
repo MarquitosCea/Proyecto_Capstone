@@ -19,6 +19,7 @@ import { NgIf, NgClass, NgFor } from '@angular/common';
 import { CapacitorHttp } from '@capacitor/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../services/api';
+import { instalarParcheRotacionMapa, establecerAnguloMapa, restaurarParcheRotacionMapa } from '../services/map-rotation';
 
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
 const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
@@ -52,6 +53,8 @@ export class HomePage implements OnInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private debeIniciarMapa: boolean = false;
   private vistaVisible: boolean = false;
+  private readonly idMapa: string = 'map-container';
+  anguloMapa: number = 0;
   
   mostrarTarjeta: boolean = false;
   mostrarHistoriaCompleta: boolean = false;
@@ -156,6 +159,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    instalarParcheRotacionMapa();
     const planGuardado = localStorage.getItem('tipo_plan');
     if (planGuardado) {
       this.tipoPlanUsuario = planGuardado.toLowerCase();
@@ -170,6 +174,7 @@ export class HomePage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.destruirMapa();
+    restaurarParcheRotacionMapa();
   }
 
   private iniciarMapaSiCorresponde() {
@@ -180,6 +185,10 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   private destruirMapa() {
+    const contenedor = document.getElementById(this.idMapa);
+    if (contenedor) contenedor.style.transform = '';
+    this.anguloMapa = 0;
+    establecerAnguloMapa(0);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     if (this.map) {
@@ -213,8 +222,18 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   async mostrarMensaje(msj: string, color: string = 'light') {
-    const toast = await this.alertCtrl.create({ message: msj, buttons: ['OK'] });
-    await toast.present();
+    const titulos: any = {
+      warning: 'Aviso',
+      danger: 'Atención',
+      success: 'Todo listo',
+      light: 'GeoNyx'
+    };
+    const alerta = await this.alertCtrl.create({
+      header: titulos[color] || 'GeoNyx',
+      message: msj,
+      buttons: [{ text: 'Entendido', role: 'cancel' }]
+    });
+    await alerta.present();
   }
 
   async verificarHorario() {
@@ -425,19 +444,9 @@ export class HomePage implements OnInit, OnDestroy {
     });
     await loading.present();
 
-    const query = `[out:json];
-    (
-      nwr["amenity"="toilets"](around:4000,${miLat},${miLng});
-      nwr["amenity"="fuel"](around:4000,${miLat},${miLng});
-      nwr["shop"="mall"](around:4000,${miLat},${miLng});
-    );
-    out center;`;
-    
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-
     try {
-      const resNativa = await CapacitorHttp.get({ url });
-      const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
+      // Overpass se consulta desde el backend: el WebView recibía 406 sin User-Agent.
+      const data: any = await firstValueFrom(this.api.getBanos(miLat, miLng));
 
       if (data?.elements && data.elements.length > 0) {
         const iconoBano = L.divIcon({
@@ -617,6 +626,25 @@ export class HomePage implements OnInit, OnDestroy {
   obtenerNombreIdiomaActivo(): string {
     const id = this.idiomasDisponibles.find(i => i.codigo === this.idiomaActivo);
     return id ? id.nombre : 'Español';
+  }
+
+  get direccionNorte(): string {
+    const grados = ((Math.round(this.anguloMapa) % 360) + 360) % 360;
+    const nombres = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+    return nombres[Math.round(grados / 45) % 8];
+  }
+
+  rotarMapa(grados: number) {
+    this.anguloMapa = (this.anguloMapa + grados) % 360;
+    if (this.anguloMapa > 180) this.anguloMapa -= 360;
+    if (this.anguloMapa < -180) this.anguloMapa += 360;
+
+    const contenedor = document.getElementById(this.idMapa);
+    if (contenedor) {
+      contenedor.style.transform = `rotate(${this.anguloMapa}deg)`;
+    }
+    establecerAnguloMapa(this.anguloMapa);
+    this.cdr.detectChanges();
   }
 
   async cambiarIdiomaTexto(codigoIdioma: string) {
@@ -841,7 +869,7 @@ export class HomePage implements OnInit, OnDestroy {
         L.polyline(waypoints, { color: '#7c4dff', weight: 5, dashArray: '10, 10' }).addTo(this.rutasLayer);
         this.map.fitBounds(L.latLngBounds(waypoints), { padding: [50, 50] });
         this.navegando = true;
-        this.mostrarMensaje(`${nombreTour}: ruta directa estimada (el servicio de rutas no respondió).`);
+        this.mostrarMensaje(`${nombreTour}\n\nRuta directa estimada.\nEl servicio de rutas no respondió.`);
         return;
       }
 
@@ -860,9 +888,11 @@ export class HomePage implements OnInit, OnDestroy {
 
       const distKm = (data.routes[0].distance / 1000).toFixed(2);
       const minCamino = Math.max(1, Math.round(data.routes[0].duration / 60));
-      const infoAlt = data.routes.length > 1 ? ' (incluye ruta alternativa en morado)' : '';
+      const infoAlt = data.routes.length > 1 ? '\nRuta alternativa: trazo morado.' : '';
 
-      this.mostrarMensaje(`${nombreTour}: ${distKm} km • ~${minCamino} min caminando${infoAlt}.`);
+      this.mostrarMensaje(
+        `${nombreTour}\n\nDistancia: ${distKm} km\nTiempo estimado: ~${minCamino} min caminando.${infoAlt}`
+      );
     } catch (error) {
       console.error('Error trazando rutas:', error);
       this.mostrarMensaje('No se pudo calcular la ruta. Revisa tu conexión a internet.');

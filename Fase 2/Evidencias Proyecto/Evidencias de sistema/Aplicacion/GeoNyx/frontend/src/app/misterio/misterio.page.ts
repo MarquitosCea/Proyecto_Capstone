@@ -22,6 +22,7 @@ import { NgIf, SlicePipe } from '@angular/common';
 import { CapacitorHttp } from '@capacitor/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../services/api';
+import { instalarParcheRotacionMapa, establecerAnguloMapa, restaurarParcheRotacionMapa } from '../services/map-rotation';
 
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
 const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
@@ -54,6 +55,8 @@ export class MisterioPage implements OnInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private debeIniciarMapa: boolean = false;
   private vistaVisible: boolean = false;
+  private readonly idMapa: string = 'map-misterio';
+  anguloMapa: number = 0;
   
   mostrarTarjeta: boolean = false;
   esManual: boolean = false; 
@@ -173,6 +176,7 @@ export class MisterioPage implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    instalarParcheRotacionMapa();
     this.miUsuarioId = localStorage.getItem('usuario_id');
     this.tipoPlanUsuario = (localStorage.getItem('tipo_plan') || 'observador').toLowerCase();
     if (this.esManual) {
@@ -184,6 +188,7 @@ export class MisterioPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.destruirMapa();
+    restaurarParcheRotacionMapa();
   }
 
   private iniciarMapaSiCorresponde() {
@@ -194,6 +199,10 @@ export class MisterioPage implements OnInit, OnDestroy {
   }
 
   private destruirMapa() {
+    const contenedor = document.getElementById(this.idMapa);
+    if (contenedor) contenedor.style.transform = '';
+    this.anguloMapa = 0;
+    establecerAnguloMapa(0);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
     if (this.map) {
@@ -803,8 +812,18 @@ export class MisterioPage implements OnInit, OnDestroy {
   }
 
   async mostrarMensaje(msj: string, color: string = 'light') {
-    const toast = await this.alertController.create({ message: msj, buttons: ['OK'] });
-    await toast.present();
+    const titulos: any = {
+      warning: 'Aviso',
+      danger: 'Atención',
+      success: 'Todo listo',
+      light: 'GeoNyx'
+    };
+    const alerta = await this.alertController.create({
+      header: titulos[color] || 'GeoNyx',
+      message: msj,
+      buttons: [{ text: 'Entendido', role: 'cancel' }]
+    });
+    await alerta.present();
   }
 
   // --- SISTEMA MULTI-IDIOMA NATIVO CON CAPACITOR HTTP (SIN BLOQUEO CORS) ---
@@ -861,6 +880,25 @@ export class MisterioPage implements OnInit, OnDestroy {
   obtenerNombreIdiomaActivo(): string {
     const id = this.idiomasDisponibles.find(i => i.codigo === this.idiomaActivo);
     return id ? id.nombre : 'Español';
+  }
+
+  get direccionNorte(): string {
+    const grados = ((Math.round(this.anguloMapa) % 360) + 360) % 360;
+    const nombres = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+    return nombres[Math.round(grados / 45) % 8];
+  }
+
+  rotarMapa(grados: number) {
+    this.anguloMapa = (this.anguloMapa + grados) % 360;
+    if (this.anguloMapa > 180) this.anguloMapa -= 360;
+    if (this.anguloMapa < -180) this.anguloMapa += 360;
+
+    const contenedor = document.getElementById(this.idMapa);
+    if (contenedor) {
+      contenedor.style.transform = `rotate(${this.anguloMapa}deg)`;
+    }
+    establecerAnguloMapa(this.anguloMapa);
+    this.cdr.detectChanges();
   }
 
   async cambiarIdiomaTexto(codigoIdioma: string) {
