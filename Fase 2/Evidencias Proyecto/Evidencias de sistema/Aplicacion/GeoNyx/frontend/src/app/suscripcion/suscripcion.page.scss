@@ -1,3 +1,12 @@
+/* Encabezado gris oscuro, igual que el resto de la pantalla */
+ion-header,
+ion-toolbar {
+  --background: #2a2d31 !important;
+  --color: #ffffff !important;
+  background: #2a2d31 !important;
+  color: #ffffff !important;
+}
+
 .fondo-planes {
   --background: #1a1b1d;
 }

@@ -25,5 +25,9 @@
 
   <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
     <item name="android:background">@drawable/splash</item>
+    <item name="android:statusBarColor">#2a2d31</item>
+    <item name="android:navigationBarColor">#2a2d31</item>
+    <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
   </style>
 </resources>
