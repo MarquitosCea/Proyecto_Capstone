@@ -49,6 +49,7 @@ export class HomePage implements OnInit, OnDestroy {
   private marcadoresLayer!: L.LayerGroup;
   private rutasLayer!: L.LayerGroup;
   private userMarker: L.Marker | null = null; 
+  private marcadorSeleccionado: L.Marker | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private debeIniciarMapa: boolean = false;
   private vistaVisible: boolean = false;
@@ -320,6 +321,43 @@ export class HomePage implements OnInit, OnDestroy {
     }
   }
 
+  private resaltarMarcador(marker: L.Marker | null, tipo: 'libro' | 'bano' | null) {
+    // Quita el aura del marcador anterior.
+    if (this.marcadorSeleccionado) {
+      this.marcadorSeleccionado.getElement()?.classList.remove('marcador-con-aura');
+      this.marcadorSeleccionado = null;
+    }
+
+    if (!marker || !tipo) return;
+
+    this.marcadorSeleccionado = marker;
+    const elemento = marker.getElement();
+    if (elemento) {
+      elemento.classList.remove('aura-verde', 'aura-blanca');
+      elemento.classList.add('marcador-con-aura', tipo === 'bano' ? 'aura-blanca' : 'aura-verde');
+    }
+    // Leaflet puede recrear el DOM al mover el mapa; reaplicamos la clase.
+    marker.once('add', () => {
+      const el = marker.getElement();
+      if (el) {
+        el.classList.add('marcador-con-aura', tipo === 'bano' ? 'aura-blanca' : 'aura-verde');
+      }
+    });
+  }
+
+  private encontrarMarcador(lat: number, lon: number): L.Marker | null {
+    let encontrado: L.Marker | null = null;
+    this.marcadoresLayer.eachLayer((capa: L.Layer) => {
+      if (capa instanceof L.Marker) {
+        const pos = capa.getLatLng();
+        if (Math.abs(pos.lat - lat) < 0.00001 && Math.abs(pos.lng - lon) < 0.00001) {
+          encontrado = capa;
+        }
+      }
+    });
+    return encontrado;
+  }
+
   centrarMapaEnUsuario() {
     if (this.userMarker) {
       const latLng = this.userMarker.getLatLng();
@@ -366,6 +404,7 @@ export class HomePage implements OnInit, OnDestroy {
 
   aplicarFiltro(categoria: string) {
     this.filtroActivo = categoria;
+    this.resaltarMarcador(null, null);
     this.marcadoresLayer.clearLayers();
 
     const lugaresMostrar = categoria === 'todos' 
@@ -393,6 +432,7 @@ export class HomePage implements OnInit, OnDestroy {
         const ahora = Date.now();
         if (ahora - ultimaApertura < 500) return; // evita doble disparo (click del botón + click de Leaflet)
         ultimaApertura = ahora;
+        this.resaltarMarcador(marker, 'libro');
         if (this.map) this.map.flyTo([lugar.lat, lugar.lon], 16, { animate: true, duration: 0.5 });
         this.cargarHistoriaLugar(lugar.pageid, lugar.title, Math.round(lugar.dist || 0), lugar.lat, lugar.lon);
       };
@@ -423,6 +463,7 @@ export class HomePage implements OnInit, OnDestroy {
     }
 
     this.filtroActivo = 'banos';
+    this.resaltarMarcador(null, null);
     this.marcadoresLayer.clearLayers();
 
     const miLat = this.userMarker.getLatLng().lat;
@@ -483,6 +524,7 @@ export class HomePage implements OnInit, OnDestroy {
             }
 
             const abrirBano = () => {
+              this.resaltarMarcador(marker, 'bano');
               this.map.flyTo([lat, lon], 16, { animate: true, duration: 0.5 });
               this.abrirDetalleServicio(nombre, nota, lat, lon);
             };
@@ -829,6 +871,7 @@ export class HomePage implements OnInit, OnDestroy {
 
   cerrarTarjeta() {
     this.detenerAudio();
+    this.resaltarMarcador(null, null);
     this.mostrarTarjeta = false;
     this.cdr.detectChanges(); 
   }
@@ -995,6 +1038,7 @@ export class HomePage implements OnInit, OnDestroy {
   seleccionarLugarBuscador(lugar: any) {
     this.lugaresFiltrados = []; 
     this.textoBuscado = '';
+    this.resaltarMarcador(this.encontrarMarcador(lugar.lat, lugar.lon), 'libro');
     this.map.flyTo([lugar.lat, lugar.lon], 16, { animate: true, duration: 0.5 });
     this.cargarHistoriaLugar(lugar.pageid, lugar.title, Math.round(lugar.dist || 0), lugar.lat, lugar.lon);
   }

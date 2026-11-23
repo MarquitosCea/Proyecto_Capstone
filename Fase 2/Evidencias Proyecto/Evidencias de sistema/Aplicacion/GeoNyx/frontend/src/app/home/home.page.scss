@@ -9,7 +9,7 @@
 /* 2. LA TARJETA */
 .tarjeta-historica {
   position: fixed;
-  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   margin: 16px;
@@ -46,6 +46,15 @@
 /* 4. FIX PARA LA CAJA DE RUTAS Y BOTONES DE LEAFLET */
 ::ng-deep .leaflet-top {
   top: 10px !important;
+}
+
+/* Separa los controles del mapa de la barra de navegación del celular */
+::ng-deep .leaflet-bottom {
+  bottom: 32px !important;
+}
+
+ion-fab {
+  margin-bottom: 45px !important;
 }
 
 ::ng-deep .leaflet-routing-container {
@@ -94,6 +103,36 @@
 @keyframes latido {
   0% { transform: scale(1); opacity: 1; }
   100% { transform: scale(3); opacity: 0; }
+}
+
+/* Aura del lugar seleccionado: misma onda que la ubicación, en verde o blanco */
+::ng-deep .marcador-con-aura {
+  border-radius: 50%;
+  z-index: 900 !important;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    z-index: -1;
+    animation: latido 1.5s infinite ease-out;
+    pointer-events: none;
+  }
+
+  &.aura-verde::before {
+    background: rgba(45, 211, 111, 0.55);
+    box-shadow: 0 0 14px rgba(45, 211, 111, 0.8);
+  }
+
+  &.aura-blanca::before {
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.8);
+  }
+
+  &.aura-verde .marcador-historico-btn img {
+    filter: drop-shadow(0 0 6px rgba(45, 211, 111, 0.9));
+  }
 }
 
 ::ng-deep .leaflet-control-attribution {

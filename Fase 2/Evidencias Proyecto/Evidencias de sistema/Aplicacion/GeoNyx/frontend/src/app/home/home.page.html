@@ -165,19 +165,19 @@
   </ion-card>
 
   <!-- BOTONES FAB INFERIORES -->
-  <ion-fab *ngIf="!mostrarTarjeta" vertical="bottom" horizontal="start" slot="fixed" style="margin-bottom: 25px; margin-left: 10px; z-index: 9999;">
+  <ion-fab *ngIf="!mostrarTarjeta" vertical="bottom" horizontal="start" slot="fixed" style="margin-bottom: 55px; margin-left: 10px; z-index: 9999;">
     <ion-fab-button color="light" (click)="centrarMapaEnUsuario()">
       <ion-icon name="locate-outline" color="danger"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 
-  <ion-fab *ngIf="navegando && !mostrarTarjeta" vertical="bottom" horizontal="center" slot="fixed" style="margin-bottom: 25px; z-index: 9999;">
+  <ion-fab *ngIf="navegando && !mostrarTarjeta" vertical="bottom" horizontal="center" slot="fixed" style="margin-bottom: 55px; z-index: 9999;">
     <ion-fab-button color="danger" (click)="cancelarNavegacion()">
       <ion-icon name="close-outline" style="font-size: 28px; color: white;"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 
-  <ion-fab *ngIf="!mostrarTarjeta && !navegando" vertical="bottom" horizontal="end" slot="fixed" style="margin-bottom: 25px; margin-right: 10px; z-index: 9999;">
+  <ion-fab *ngIf="!mostrarTarjeta && !navegando" vertical="bottom" horizontal="end" slot="fixed" style="margin-bottom: 55px; margin-right: 10px; z-index: 9999;">
     <ion-fab-button color="tertiary">
       <ion-icon name="map-outline"></ion-icon>
     </ion-fab-button>
