@@ -124,15 +124,13 @@ ion-alert {
 
   .alert-wrapper {
     background: #2a2d31 !important;
-    border: 1px solid #4a4e54 !important;
     border-radius: 14px !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
     overflow: hidden !important;
   }
 
   .alert-head {
-    background: #34373b !important;
-    border-bottom: 1px solid #45494f !important;
+    background: #2a2d31 !important;
   }
 
   .alert-title,
@@ -150,7 +148,18 @@ ion-alert {
 
   .alert-button-group {
     background: transparent !important;
-    border-top: 1px solid #45494f !important;
+  }
+
+  /* Quita cualquier separador/raya que Ionic dibuje dentro de la alerta */
+  .alert-wrapper,
+  .alert-head,
+  .alert-button-group,
+  .alert-button,
+  .alert-button-inner {
+    border: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    outline: none !important;
   }
 
   .alert-button,

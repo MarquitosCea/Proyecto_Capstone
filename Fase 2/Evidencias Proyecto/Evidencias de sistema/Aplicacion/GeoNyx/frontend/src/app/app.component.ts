@@ -1,6 +1,8 @@
 ﻿import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 import { 
   MenuController, IonApp, IonMenu, IonHeader, 
@@ -36,6 +38,18 @@ export class AppComponent {
       personCircleOutline, bookOutline, medalOutline, star, starOutline, diamondOutline 
     });
     this.verificarSesion();
+    this.configurarBarraEstado();
+  }
+
+  private async configurarBarraEstado() {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      await StatusBar.setOverlaysWebView({ overlay: false });
+      await StatusBar.setBackgroundColor({ color: '#2a2d31' });
+      await StatusBar.setStyle({ style: Style.Dark });
+    } catch (error) {
+      console.warn('No se pudo configurar la barra de estado:', error);
+    }
   }
 
   // Método que se llama al iniciar para revisar el localStorage
