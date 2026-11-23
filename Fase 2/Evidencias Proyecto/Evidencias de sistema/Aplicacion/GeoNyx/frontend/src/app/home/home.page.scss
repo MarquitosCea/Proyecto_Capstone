@@ -54,7 +54,7 @@
 }
 
 ion-fab {
-  margin-bottom: 45px !important;
+  margin-bottom: 55px !important;
 }
 
 ::ng-deep .leaflet-routing-container {
@@ -125,9 +125,9 @@ ion-fab {
     box-shadow: 0 0 14px rgba(45, 211, 111, 0.8);
   }
 
-  &.aura-blanca::before {
-    background: rgba(255, 255, 255, 0.55);
-    box-shadow: 0 0 14px rgba(255, 255, 255, 0.8);
+  &.aura-celeste::before {
+    background: rgba(94, 205, 255, 0.6);
+    box-shadow: 0 0 14px rgba(94, 205, 255, 0.9);
   }
 
   &.aura-verde .marcador-historico-btn img {

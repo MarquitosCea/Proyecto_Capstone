@@ -59,6 +59,11 @@
         <ion-label>Todos</ion-label>
       </ion-chip>
 
+      <ion-chip [color]="filtroActivo === 'estacion' ? 'primary' : 'medium'" (click)="aplicarFiltro('estacion')">
+        <ion-icon name="train-outline"></ion-icon>
+        <ion-label>Estaciones</ion-label>
+      </ion-chip>
+
       <ion-chip [color]="filtroActivo === 'museo' ? 'primary' : 'medium'" (click)="aplicarFiltro('museo')">
         <ion-icon name="color-palette-outline"></ion-icon>
         <ion-label>Museos</ion-label>

@@ -13,7 +13,7 @@
 
 .tarjeta-oscura {
   position: fixed;
-  bottom: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   margin: 16px;
@@ -27,6 +27,9 @@
 
 /* FIX LEAFLET CONTROLS */
 ::ng-deep .leaflet-top { top: 10px !important; }
+
+/* Separa los controles del mapa de la barra de navegación del celular */
+::ng-deep .leaflet-bottom { bottom: 32px !important; }
 
 /* --- ANIMACIÓN USUARIO (Morado) --- */
 ::ng-deep .pulso-misterio {

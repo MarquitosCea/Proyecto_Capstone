@@ -12,7 +12,8 @@ import {
   bookOutline, moonOutline, navigateOutline, volumeHighOutline, volumeMuteOutline, 
   menuOutline, sunnyOutline, locationOutline, micOutline, mic, 
   mapOutline, footstepsOutline, shuffleOutline, locateOutline, closeOutline,
-  colorPaletteOutline, leafOutline, businessOutline, languageOutline, waterOutline, lockClosed, checkmark, refreshOutline, close
+  colorPaletteOutline, leafOutline, businessOutline, languageOutline, waterOutline, lockClosed, checkmark, refreshOutline, close,
+  trainOutline
 } from 'ionicons/icons';
 import * as L from 'leaflet';
 import { NgIf, NgClass, NgFor } from '@angular/common';
@@ -117,7 +118,7 @@ export class HomePage implements OnInit, OnDestroy {
       menuOutline, sunnyOutline, locationOutline, micOutline, mic, 
       mapOutline, footstepsOutline, shuffleOutline, locateOutline, closeOutline,
       colorPaletteOutline, leafOutline, businessOutline, languageOutline, waterOutline,
-      lockClosed, checkmark, refreshOutline, close
+      lockClosed, checkmark, refreshOutline, close, trainOutline
     });
 
     const nav = this.router.getCurrentNavigation();
@@ -333,14 +334,14 @@ export class HomePage implements OnInit, OnDestroy {
     this.marcadorSeleccionado = marker;
     const elemento = marker.getElement();
     if (elemento) {
-      elemento.classList.remove('aura-verde', 'aura-blanca');
-      elemento.classList.add('marcador-con-aura', tipo === 'bano' ? 'aura-blanca' : 'aura-verde');
+      elemento.classList.remove('aura-verde', 'aura-celeste');
+      elemento.classList.add('marcador-con-aura', tipo === 'bano' ? 'aura-celeste' : 'aura-verde');
     }
     // Leaflet puede recrear el DOM al mover el mapa; reaplicamos la clase.
     marker.once('add', () => {
       const el = marker.getElement();
       if (el) {
-        el.classList.add('marcador-con-aura', tipo === 'bano' ? 'aura-blanca' : 'aura-verde');
+        el.classList.add('marcador-con-aura', tipo === 'bano' ? 'aura-celeste' : 'aura-verde');
       }
     });
   }
@@ -387,7 +388,11 @@ export class HomePage implements OnInit, OnDestroy {
         let cat = 'otros';
         const titulo = lugar.title.toLowerCase();
         
-        if (titulo.includes('museo') || titulo.includes('galería') || titulo.includes('centro cultural')) cat = 'museo';
+        const esEstacion = titulo.includes('estación') || titulo.includes('metro') ||
+          titulo.includes('laguna sur') || titulo.includes('barranca') || titulo.includes('pajarito');
+
+        if (esEstacion) cat = 'estacion';
+        else if (titulo.includes('museo') || titulo.includes('galería') || titulo.includes('centro cultural')) cat = 'museo';
         else if (titulo.includes('parque') || titulo.includes('cerro') || titulo.includes('plaza')) cat = 'parque';
         else if (titulo.includes('palacio') || titulo.includes('monumento') || titulo.includes('iglesia')) cat = 'monumento';
 

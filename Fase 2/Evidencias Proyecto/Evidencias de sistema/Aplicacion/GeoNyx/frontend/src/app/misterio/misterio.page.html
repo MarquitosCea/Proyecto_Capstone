@@ -130,14 +130,14 @@
   </ion-card>
 
   <!-- BOTÓN "MI UBICACIÓN" -->
-  <ion-fab *ngIf="!mostrarTarjeta" vertical="bottom" horizontal="start" slot="fixed" style="margin-bottom: 25px; margin-left: 10px; z-index: 9999;">
+  <ion-fab *ngIf="!mostrarTarjeta" vertical="bottom" horizontal="start" slot="fixed" style="margin-bottom: 55px; margin-left: 10px; z-index: 9999;">
     <ion-fab-button color="dark" (click)="centrarMapaEnUsuario()">
       <ion-icon name="locate-outline" color="light"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 
   <!-- BOTÓN "CONTAR LEYENDA" -->
-  <ion-fab *ngIf="!mostrarTarjeta" vertical="bottom" horizontal="end" slot="fixed" style="margin-bottom: 25px; margin-right: 10px; z-index: 9999;">
+  <ion-fab *ngIf="!mostrarTarjeta" vertical="bottom" horizontal="end" slot="fixed" style="margin-bottom: 55px; margin-right: 10px; z-index: 9999;">
     <ion-fab-button style="--background: #ff00b7;" (click)="formularioNuevaLeyenda()">
       <ion-icon name="add-outline" color="light"></ion-icon>
     </ion-fab-button>
