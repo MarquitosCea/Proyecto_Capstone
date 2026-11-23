@@ -1,41 +1,93 @@
 .fondo-planes {
-  --background: #00030d;
+  --background: #1a1b1d;
 }
 
 .tarjeta-plan {
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  --background: #2a2d31;
+  --color: #f2f2f2;
+  border-radius: 14px;
+  border: 1px solid #45494f;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   margin-bottom: 20px;
-  
+
+  ion-card-header {
+    background: #34373b !important;
+    border-bottom: 1px solid #45494f !important;
+  }
+
+  ion-card-subtitle {
+    color: #cfd3d8 !important;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+  }
+
+  ion-card-title {
+    color: #ffffff !important;
+    font-weight: 800;
+  }
+
   .precio {
     font-size: 2.2rem;
     font-weight: 800;
     margin: 10px 0 0 0;
-    
+    color: #ffffff !important;
+
     .mes {
       font-size: 1.2rem;
       font-weight: 400;
-      color: #888;
+      color: #b9bdc4 !important;
     }
   }
 
+  /* La lista de ventajas también va en gris oscuro */
+  ion-card-content,
+  ion-list,
+  ion-item,
+  ion-item .item-native,
+  ion-label {
+    background: transparent !important;
+    background-color: transparent !important;
+    --background: transparent !important;
+    --color: #e6e6e6 !important;
+    color: #e6e6e6 !important;
+  }
+
   ion-item {
-    --background: transparent;
     font-size: 14px;
     --min-height: 35px;
+
+    ion-label {
+      color: #e6e6e6 !important;
+    }
+  }
+
+  ion-button {
+    --border-radius: 10px;
+    font-weight: 700;
   }
 }
 
 .plan-destacado {
-  background: linear-gradient(135deg, #1e2023 0%, #3a3d45 100%);
+  --background: #34373b;
+  border: 1px solid #6a6f77;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
   transform: scale(1.02);
-  box-shadow: 0 8px 24px rgba(45, 211, 111, 0.3);
-  
-  ion-card-title, ion-card-subtitle, .precio, .mes {
-    color: white !important;
+
+  ion-card-subtitle {
+    color: #ffffff !important;
   }
 
-  .lista-oscura ion-item {
-    --color: white;
+  ion-card-title,
+  ion-card-subtitle,
+  .precio,
+  .mes {
+    color: #ffffff !important;
+  }
+
+  ion-item,
+  ion-item .item-native,
+  ion-label {
+    --color: #ffffff !important;
+    color: #ffffff !important;
   }
 }

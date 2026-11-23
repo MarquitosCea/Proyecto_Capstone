@@ -15,8 +15,10 @@
   margin: 16px;
   z-index: 9999; 
   border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  background-color: rgba(42, 45, 49, 0.96);
+  border: 1px solid #4a4e54;
+  color: #f2f2f2;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   max-height: 45vh; 
   overflow-y: auto; 
 }
@@ -28,9 +30,17 @@
   left: 0;
   width: 100%;
   z-index: 1001; 
-  background-color: white; 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background-color: #2a2d31;
+  border: 1px solid #4a4e54;
+  color: #f2f2f2;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
   border-radius: 0 0 12px 12px;
+
+  ion-item {
+    --background: transparent;
+    --color: #f2f2f2;
+    color: #f2f2f2;
+  }
 }
 
 /* 4. FIX PARA LA CAJA DE RUTAS Y BOTONES DE LEAFLET */

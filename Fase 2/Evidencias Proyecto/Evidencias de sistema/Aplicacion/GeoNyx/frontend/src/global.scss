@@ -45,7 +45,7 @@ ion-loading.loading-geonyx {
   --backdrop-opacity: 0.5;
 
   .loading-wrapper {
-    background: rgba(30, 32, 35, 0.96) !important;
+    background: rgba(42, 45, 49, 0.96) !important;
     color: #ffffff !important;
     border-radius: 16px !important;
     padding: 25px 20px 20px 20px !important;
@@ -112,4 +112,92 @@ ion-loading.loading-geonyx {
 .marcador-leyenda * {
   pointer-events: auto !important;
   touch-action: manipulation;
+}
+
+/* ============================================================
+   Recuadros gris oscuro (sin brillos ni colores neón)
+   ============================================================ */
+ion-alert {
+  --background: #2a2d31 !important;
+  --backdrop-opacity: 0.58 !important;
+  font-family: inherit !important;
+
+  .alert-wrapper {
+    background: #2a2d31 !important;
+    border: 1px solid #4a4e54 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    overflow: hidden !important;
+  }
+
+  .alert-head {
+    background: #34373b !important;
+    border-bottom: 1px solid #45494f !important;
+  }
+
+  .alert-title,
+  .alert-sub-title {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
+
+  .alert-message {
+    color: #e6e6e6 !important;
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+    white-space: pre-line !important;
+  }
+
+  .alert-button-group {
+    background: transparent !important;
+    border-top: 1px solid #45494f !important;
+  }
+
+  .alert-button,
+  .alert-button.ion-focused,
+  .alert-button:focus,
+  .alert-button:active,
+  .alert-button:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #f2f2f2 !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    box-shadow: none !important;
+  }
+}
+
+ion-action-sheet {
+  --background: #2a2d31 !important;
+  --backdrop-opacity: 0.58 !important;
+
+  .action-sheet-wrapper {
+    background: #2a2d31 !important;
+    border: 1px solid #4a4e54 !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .action-sheet-title,
+  .action-sheet-sub-title {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
+
+  .action-sheet-button,
+  .action-sheet-button.ion-focused,
+  .action-sheet-button:active {
+    background: #34373b !important;
+    background-color: #34373b !important;
+    color: #f2f2f2 !important;
+    text-transform: none !important;
+  }
+}
+
+ion-toast {
+  --background: #2a2d31 !important;
+  --color: #f2f2f2 !important;
+  --button-color: #ffffff !important;
+  --border-color: #4a4e54 !important;
+  --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }

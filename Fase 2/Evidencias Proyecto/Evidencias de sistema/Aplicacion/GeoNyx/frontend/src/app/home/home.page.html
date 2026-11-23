@@ -97,7 +97,7 @@
       <ion-card-subtitle [style.color]="esServicio ? '#3880ff' : '#2dd36f'">
         {{ esServicio ? textosUI[idiomaActivo].servicio : textosUI[idiomaActivo].panorama }}
       </ion-card-subtitle>
-      <ion-card-title style="color: #222; font-weight: bold;">{{ lugarSeleccionado.titulo }}</ion-card-title>
+      <ion-card-title style="color: #ffffff; font-weight: bold;">{{ lugarSeleccionado.titulo }}</ion-card-title>
     </ion-card-header>
 
     <ion-card-content>
@@ -105,7 +105,7 @@
       <!-- CONTROLES SUPERIORES (Se oculta el traductor si es un baño) -->
       <ion-row class="ion-align-items-center" style="margin-bottom: 8px;">
         <ion-col [size]="esServicio ? 12 : 6" class="ion-no-padding">
-          <p style="color: black; margin: 0;"><strong>{{ textosUI[idiomaActivo].a }} {{ lugarSeleccionado.distancia }} {{ textosUI[idiomaActivo].metros }}</strong></p>
+          <p style="color: #f2f2f2; margin: 0;"><strong>{{ textosUI[idiomaActivo].a }} {{ lugarSeleccionado.distancia }} {{ textosUI[idiomaActivo].metros }}</strong></p>
         </ion-col>
         <ion-col size="6" class="ion-text-end ion-no-padding" *ngIf="!esServicio">
           <ion-button size="small" fill="outline" color="tertiary" (click)="abrirMenuIdiomas()" shape="round">
@@ -116,9 +116,9 @@
       </ion-row>
 
       <!-- TEXTO DE LA HISTORIA O DESCRIPCIÓN DEL BAÑO -->
-      <p style="color: #444; margin-top: 0px; min-height: 40px; font-size: 15px;">
+      <p style="color: #d7d7d7; margin-top: 0px; min-height: 40px; font-size: 15px;">
         
-        <span *ngIf="traduciendoTexto" style="color: #888; display: flex; align-items: center;">
+        <span *ngIf="traduciendoTexto" style="color: #b9bdc4; display: flex; align-items: center;">
           <ion-spinner name="dots" color="primary" style="margin-right: 8px;"></ion-spinner> 
           <i>Traduciendo...</i>
         </span>
@@ -149,7 +149,7 @@
       </ion-row>
 
       <!-- BOTÓN DE AUDIO -->
-      <div class="ion-text-center ion-margin-top" style="border-top: 1px solid #eee; padding-top: 10px;" *ngIf="!esServicio">
+      <div class="ion-text-center ion-margin-top" style="border-top: 1px solid #4a4e54; padding-top: 10px;" *ngIf="!esServicio">
         <ion-button size="small" [color]="leyendoAudio ? 'warning' : 'primary'" (click)="toggleAudio()" shape="round">
           <ion-icon [name]="leyendoAudio ? 'volume-mute-outline' : 'volume-high-outline'" slot="start"></ion-icon>
           {{ leyendoAudio ? textosUI[idiomaActivo].detenerAudio : textosUI[idiomaActivo].escucharEn + ' ' + obtenerNombreIdiomaActivo() }}
