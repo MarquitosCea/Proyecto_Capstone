@@ -196,3 +196,31 @@
   background-size: contain;
   animation: latido-giratorio 2s ease-in-out infinite; 
 }
+
+/* Marcadores de leyendas: botón táctil con área de pulsación amplia */
+::ng-deep .marcador-leyenda {
+  background: transparent !important;
+  border: none !important;
+}
+
+::ng-deep .marcador-leyenda-btn {
+  width: 45px;
+  height: 45px;
+  padding: 2px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto !important;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::ng-deep .marcador-leyenda-btn img {
+  width: 41px;
+  height: 41px;
+  pointer-events: none;
+  user-select: none;
+}

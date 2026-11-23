@@ -179,3 +179,55 @@
   50% { transform: rotate(180deg) scale(1.1); }
   100% { transform: rotate(360deg) scale(1); }
 }
+
+.overlay-controles, .controles-superiores, .capa-flotante {
+  pointer-events: none !important;
+}
+
+ion-searchbar, ion-chip, ion-fab, ion-fab-button, ion-card, ion-list, .leaflet-marker-icon {
+  pointer-events: auto !important;
+}
+
+ion-content > div {
+  pointer-events: none !important;
+}
+
+#map-container,
+#map-container *,
+ion-searchbar,
+ion-chip,
+ion-fab,
+ion-fab-button,
+ion-card,
+ion-list,
+.leaflet-marker-icon {
+  pointer-events: auto !important;
+}
+
+/* Marcadores de Wikipedia: botón táctil con área de pulsación amplia */
+::ng-deep .marcador-historico {
+  background: transparent !important;
+  border: none !important;
+}
+
+::ng-deep .marcador-historico-btn {
+  width: 46px;
+  height: 46px;
+  padding: 2px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto !important;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::ng-deep .marcador-historico-btn img {
+  width: 42px;
+  height: 42px;
+  pointer-events: none;
+  user-select: none;
+}

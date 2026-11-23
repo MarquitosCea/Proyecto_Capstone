@@ -8,6 +8,74 @@
  * For more information on global stylesheets, visit the documentation:
  * https://ionicframework.com/docs/layout/global-stylesheets
  */
+/* @import "@ionic/angular/css/palettes/dark.system.css"; */
+
+/* @import "@ionic/angular/css/palettes/dark.system.css"; */
+
+:root,
+html,
+body,
+ion-app,
+.ion-page,
+ion-content {
+  color-scheme: light only !important;
+}
+
+html,
+body {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Evita que WebView aplique su propio dark-mode sobre los estilos de GeoNyx */
+@media (prefers-color-scheme: dark) {
+  :root,
+  html,
+  body,
+  ion-app,
+  .ion-page,
+  ion-content {
+    color-scheme: light only !important;
+  }
+}
+
+/* Overlay de carga GLOBAL: los overlays de Ionic se montan fuera del componente,
+   por eso los estilos deben estar aquí y no solo en el SCSS de cada página. */
+ion-loading.loading-geonyx {
+  --backdrop-opacity: 0.5;
+
+  .loading-wrapper {
+    background: rgba(30, 32, 35, 0.96) !important;
+    color: #ffffff !important;
+    border-radius: 16px !important;
+    padding: 25px 20px 20px 20px !important;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    max-width: 260px !important;
+  }
+
+  .loading-wrapper::before {
+    content: '';
+    display: block;
+    width: 65px;
+    height: 65px;
+    margin: 0 auto 15px auto;
+    background: url('/assets/icon/logo-geonyx.png') no-repeat center center;
+    background-size: contain;
+    animation: geonyx-spin 2s ease-in-out infinite;
+  }
+}
+
+@keyframes geonyx-spin {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@import 'leaflet/dist/leaflet.css';
+@import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
+
+
 
 /* Core CSS required for Ionic components to work properly */
 @import "@ionic/angular/css/core.css";
@@ -34,6 +102,4 @@
 
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
-@import 'leaflet/dist/leaflet.css';
-@import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
+/*@import '@ionic/angular/css/palettes/dark.system.css';*/

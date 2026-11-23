@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+﻿import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router'; 
 import { 
   IonHeader, IonToolbar, IonTitle, IonContent, 
@@ -12,11 +12,11 @@ import {
   bookOutline, moonOutline, navigateOutline, volumeHighOutline, volumeMuteOutline, 
   menuOutline, sunnyOutline, locationOutline, micOutline, mic, 
   mapOutline, footstepsOutline, shuffleOutline, locateOutline, closeOutline,
-  colorPaletteOutline, leafOutline, businessOutline, languageOutline, waterOutline, lockClosed, checkmark, refreshOutline
+  colorPaletteOutline, leafOutline, businessOutline, languageOutline, waterOutline, lockClosed, checkmark, refreshOutline, close
 } from 'ionicons/icons';
 import * as L from 'leaflet';
 import { NgIf, NgClass, NgFor } from '@angular/common';
-import 'leaflet-routing-machine';
+import { CapacitorHttp } from '@capacitor/core';
 import { ApiService } from '../services/api';
 
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
@@ -43,11 +43,14 @@ L.Marker.prototype.options.icon = iconDefault;
     IonFab, IonFabButton, IonFabList, IonSpinner
   ]
 })
-export class HomePage implements OnInit {
+export class HomePage implements OnInit, OnDestroy {
   private map!: L.Map;
   private marcadoresLayer!: L.LayerGroup;
-  private controlRuta: L.Routing.Control | null = null;
+  private rutasLayer!: L.LayerGroup;
   private userMarker: L.Marker | null = null; 
+  private resizeObserver: ResizeObserver | null = null;
+  private debeIniciarMapa: boolean = false;
+  private vistaVisible: boolean = false;
   
   mostrarTarjeta: boolean = false;
   mostrarHistoriaCompleta: boolean = false;
@@ -90,6 +93,10 @@ export class HomePage implements OnInit {
     traducciones: {} 
   };
 
+  private get planNormalizado(): string {
+    return (this.tipoPlanUsuario || 'observador').toLowerCase().trim();
+  }
+
   constructor(
     private cdr: ChangeDetectorRef, 
     private router: Router, 
@@ -104,7 +111,7 @@ export class HomePage implements OnInit {
       menuOutline, sunnyOutline, locationOutline, micOutline, mic, 
       mapOutline, footstepsOutline, shuffleOutline, locateOutline, closeOutline,
       colorPaletteOutline, leafOutline, businessOutline, languageOutline, waterOutline,
-      lockClosed, checkmark , refreshOutline
+      lockClosed, checkmark, refreshOutline, close
     });
 
     const nav = this.router.getCurrentNavigation();
@@ -113,26 +120,77 @@ export class HomePage implements OnInit {
     }
   }
 
+  ionViewWillEnter() {
+    const planGuardado = localStorage.getItem('tipo_plan');
+    if (planGuardado) {
+      this.tipoPlanUsuario = planGuardado.toLowerCase();
+    }
+    this.cdr.detectChanges();
+  }
+
+  ionViewDidEnter() {
+    // El mapa se crea aquí, cuando el contenedor ya es visible y tiene tamaño real.
+    this.vistaVisible = true;
+    this.iniciarMapaSiCorresponde();
+
+    const invalidar = () => {
+      if (this.map) {
+        this.map.invalidateSize(true);
+        window.dispatchEvent(new Event('resize'));
+      }
+    };
+    setTimeout(invalidar, 150);
+    setTimeout(invalidar, 500);
+    setTimeout(invalidar, 1200);
+  }
+
+  ionViewWillLeave() {
+    this.vistaVisible = false;
+    this.destruirMapa();
+    this.debeIniciarMapa = true;
+  }
+
   ngOnInit() {
     const planGuardado = localStorage.getItem('tipo_plan');
     if (planGuardado) {
-      this.tipoPlanUsuario = planGuardado;
+      this.tipoPlanUsuario = planGuardado.toLowerCase();
     }
 
     if (this.esManual) {
-      this.initMap();
+      this.debeIniciarMapa = true;
     } else {
       this.verificarHorario();
     }
   }
 
+  ngOnDestroy() {
+    this.destruirMapa();
+  }
+
+  private iniciarMapaSiCorresponde() {
+    if (this.vistaVisible && this.debeIniciarMapa && !this.map) {
+      this.debeIniciarMapa = false;
+      this.initMap();
+    }
+  }
+
+  private destruirMapa() {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.map) {
+      this.map.remove();
+      (this.map as any) = null;
+    }
+    this.userMarker = null;
+  }
+
   async verificarPremium(funcionDestacada: string): Promise<boolean> {
-    if (this.tipoPlanUsuario !== 'observador') {
+    if (!this.planNormalizado.includes('observador')) {
       return true; 
     }
 
     const alert = await this.alertCtrl.create({
-      header: 'Función Premium ',
+      header: 'Función Premium',
       message: `Para usar ${funcionDestacada} necesitas mejorar tu plan. ¡Desbloquea todo el potencial de GeoNyx!`,
       buttons: [
         { text: 'Quizás después', role: 'cancel' },
@@ -149,7 +207,7 @@ export class HomePage implements OnInit {
     return false; 
   }
 
-    async mostrarMensaje(msj: string, color: string = 'light') {
+  async mostrarMensaje(msj: string, color: string = 'light') {
     const toast = await this.alertCtrl.create({ message: msj, buttons: ['OK'] });
     await toast.present();
   }
@@ -157,7 +215,6 @@ export class HomePage implements OnInit {
   async verificarHorario() {
     const hora = await this.api.obtenerHoraReal();
     
-    // De noche (20:00 a 06:00) se bloquea o redirige a misterio
     if (hora >= 20 || hora < 6) {
       if (!this.esManual) {
         this.mostrarMensaje('Es de noche. Entrando al Modo Misterio...', 'warning');
@@ -166,15 +223,15 @@ export class HomePage implements OnInit {
       }
     }
     
-    // De día (06:00 a 20:00) inicializa el mapa normalmente
-    this.initMap();
+    this.debeIniciarMapa = true;
+    this.iniciarMapaSiCorresponde();
   }
 
   async irAMisterio() {
     const horaActual = new Date().getHours();
     const esDeNoche = horaActual >= 20 || horaActual < 8;
 
-    if (this.tipoPlanUsuario === 'observador' && !esDeNoche) {
+    if (this.planNormalizado.includes('observador') && !esDeNoche) {
       await this.verificarPremium('el Cambio Manual a Modo Misterio durante el día');
       return;
     }
@@ -183,38 +240,69 @@ export class HomePage implements OnInit {
   }
 
   initMap() {
-    this.map = L.map('map-container').setView([-33.4915, -70.7190], 15);
+    if (this.map) return;
+
+    try {
+      this.map = L.map('map-container', {
+        tapTolerance: 15
+      }).setView([-33.4915, -70.7190], 15);
+    } catch (error) {
+      console.error('No se pudo inicializar el mapa histórico:', error);
+      this.debeIniciarMapa = true;
+      return;
+    }
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
       attribution: '© OpenStreetMap' 
     }).addTo(this.map);
 
     this.marcadoresLayer = L.layerGroup().addTo(this.map);
+    this.rutasLayer = L.layerGroup().addTo(this.map);
 
-    setTimeout(() => { this.map.invalidateSize(); }, 400);
-    this.map.locate();
+    const mapEl = document.getElementById('map-container');
+    if (mapEl && 'ResizeObserver' in window) {
+      this.resizeObserver = new ResizeObserver(() => {
+        if (this.map) this.map.invalidateSize(true);
+      });
+      this.resizeObserver.observe(mapEl);
+    }
+
+    setTimeout(() => { if (this.map) this.map.invalidateSize(true); }, 300);
+    setTimeout(() => { if (this.map) this.map.invalidateSize(true); }, 900);
+    this.map.locate({ enableHighAccuracy: true, timeout: 7000 });
 
     this.map.on('locationfound', (e) => {
-      setTimeout(() => { 
-        this.map.invalidateSize(); 
-        window.dispatchEvent(new Event('resize')); 
-      }, 800);
-      
-      const iconoUbicacion = L.divIcon({
-        className: 'icono-ubicacion-limpio',
-        html: `<div class="pulso-ubicacion"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-        popupAnchor: [0, -15] 
-      });
-      
-      this.userMarker = L.marker(e.latlng, { icon: iconoUbicacion })
-        .addTo(this.map)
-        .bindPopup('<b style="color: #333131; font-size: 14px;">¡Estás aquí!</b>')
-        .openPopup();
-      
+      if (this.map) {
+        this.map.invalidateSize(true); 
+        this.map.setView(e.latlng, 15);
+      }
+      this.colocarMarcadorUsuario(e.latlng);
       this.buscarLugaresWikipedia(e.latlng.lat, e.latlng.lng);
     });
+
+    this.map.on('locationerror', () => {
+      const fallbackCoords = L.latLng(-33.4915, -70.7190);
+      this.colocarMarcadorUsuario(fallbackCoords);
+      this.buscarLugaresWikipedia(fallbackCoords.lat, fallbackCoords.lng);
+    });
+  }
+
+  private colocarMarcadorUsuario(latlng: L.LatLng) {
+    const iconoUbicacion = L.divIcon({
+      className: 'icono-ubicacion-limpio',
+      html: `<div class="pulso-ubicacion"></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      popupAnchor: [0, -15] 
+    });
+    
+    if (this.userMarker) {
+      this.userMarker.setLatLng(latlng);
+    } else {
+      this.userMarker = L.marker(latlng, { icon: iconoUbicacion })
+        .addTo(this.map)
+        .bindPopup('<b style="color: #333131; font-size: 14px;">¡Estás aquí!</b>');
+    }
   }
 
   centrarMapaEnUsuario() {
@@ -223,12 +311,12 @@ export class HomePage implements OnInit {
       this.map.flyTo(latLng, 16, { animate: true, duration: 0.5 });
       this.userMarker.openPopup();
     } else {
-      alert('Aún no hemos detectado tu ubicación.');
+      this.mostrarMensaje('Aún no hemos detectado tu ubicación.');
     }
   }
 
- async buscarLugaresWikipedia(lat: number, lon: number) {
-   const loading = await this.loadingCtrl.create({
+  async buscarLugaresWikipedia(lat: number, lon: number) {
+    const loading = await this.loadingCtrl.create({
       spinner: null, 
       cssClass: 'loading-geonyx',
       message: 'Buscando historias cercanas...'
@@ -238,9 +326,9 @@ export class HomePage implements OnInit {
     const urlGeo = `https://es.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${lat}|${lon}&gsradius=10000&gslimit=20&format=json&origin=*`;
     
     try {
-      const respuesta = await fetch(urlGeo);
-      const data = await respuesta.json();
-      if (!data.query || !data.query.geosearch) return;
+      const resNativa = await CapacitorHttp.get({ url: urlGeo });
+      const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
+      if (!data?.query?.geosearch) return;
       
       this.listaLugares = data.query.geosearch.map((lugar: any) => {
         let cat = 'otros';
@@ -269,20 +357,42 @@ export class HomePage implements OnInit {
       ? this.listaLugares 
       : this.listaLugares.filter(l => l.categoria === categoria);
 
-    const iconoLibrito = L.icon({
-      iconUrl: 'assets/icon/libro.png',
-      iconSize: [35, 35],
-      iconAnchor: [17, 17], 
-      popupAnchor: [0, -17]
+    const crearIcono = (titulo: string) => L.divIcon({
+      className: 'marcador-historico',
+      html: `<button type="button" class="marcador-historico-btn" aria-label="Abrir ${String(titulo).replace(/"/g, '&quot;')}"><img src="assets/icon/libro.png" alt="" draggable="false" /></button>`,
+      iconSize: [46, 46],
+      iconAnchor: [23, 23],
+      popupAnchor: [0, -23]
     });
 
     lugaresMostrar.forEach((lugar: any) => {
-      const marker = L.marker([lugar.lat, lugar.lon], { icon: iconoLibrito });
-      marker.on('click', () => {
-        this.map.flyTo([lugar.lat, lugar.lon], 16, { animate: true, duration: 0.5 });
+      const marker = L.marker([lugar.lat, lugar.lon], { 
+        icon: crearIcono(lugar.title),
+        interactive: true,
+        bubblingMouseEvents: false,
+        keyboard: true
+      }).addTo(this.marcadoresLayer);
+
+      let ultimaApertura = 0;
+      const abrirLugar = () => {
+        const ahora = Date.now();
+        if (ahora - ultimaApertura < 500) return; // evita doble disparo (click del botón + click de Leaflet)
+        ultimaApertura = ahora;
+        if (this.map) this.map.flyTo([lugar.lat, lugar.lon], 16, { animate: true, duration: 0.5 });
         this.cargarHistoriaLugar(lugar.pageid, lugar.title, Math.round(lugar.dist || 0), lugar.lat, lugar.lon);
-      });
-      this.marcadoresLayer.addLayer(marker);
+      };
+
+      marker.on('click', abrirLugar);
+
+      // Botón real dentro del ícono: el WebView de Android responde mejor a click que a touchend.
+      const boton = marker.getElement()?.querySelector('.marcador-historico-btn');
+      if (boton) {
+        boton.addEventListener('click', (ev: Event) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          abrirLugar();
+        });
+      }
     });
 
     this.cdr.detectChanges();
@@ -293,7 +403,7 @@ export class HomePage implements OnInit {
     if (!tienePermiso) return; 
 
     if (!this.userMarker) {
-      alert('Esperando a obtener tu ubicación actual...');
+      this.mostrarMensaje('Esperando a obtener tu ubicación actual...');
       return;
     }
 
@@ -321,11 +431,10 @@ export class HomePage implements OnInit {
     const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
     try {
-      const respuesta = await fetch(url);
-      const data = await respuesta.json();
+      const resNativa = await CapacitorHttp.get({ url });
+      const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
 
-      if (data.elements && data.elements.length > 0) {
-        
+      if (data?.elements && data.elements.length > 0) {
         const iconoBano = L.divIcon({
           className: 'icono-bano-publico',
           html: `<div style="font-size: 20px; background: white; border-radius: 50%; width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🚽</div>`,
@@ -340,7 +449,7 @@ export class HomePage implements OnInit {
           const lon = lugar.lon || lugar.center?.lon;
           
           if (lat && lon) {
-            const marker = L.marker([lat, lon], { icon: iconoBano });
+            const marker = L.marker([lat, lon], { icon: iconoBano, interactive: true }).addTo(this.marcadoresLayer);
             
             let tipoLugar = 'Baño Público';
             if (lugar.tags?.amenity === 'fuel') tipoLugar = 'Estación de Servicio (Baño)';
@@ -352,27 +461,34 @@ export class HomePage implements OnInit {
               nota = '<strong style="color:#f39c12;">Atención:</strong> Puede requerir ser cliente para usar los baños.';
             }
 
-            marker.on('click', () => {
+            const abrirBano = () => {
               this.map.flyTo([lat, lon], 16, { animate: true, duration: 0.5 });
               this.abrirDetalleServicio(nombre, nota, lat, lon);
-            });
+            };
 
-            this.marcadoresLayer.addLayer(marker);
+            marker.on('click', abrirBano);
+            const el = marker.getElement();
+            if (el) {
+              el.addEventListener('touchend', (ev: TouchEvent) => {
+                ev.stopPropagation();
+                abrirBano();
+              }, { passive: true });
+            }
+
             pinesDibujados++;
           }
         });
 
         if (pinesDibujados > 0) {
-           this.map.setView([miLat, miLng], 13);
+          this.map.setView([miLat, miLng], 13);
         }
-
       } else {
-        alert('No se encontraron servicios ni baños públicos en un radio de 4km.');
+        this.mostrarMensaje('No se encontraron servicios ni baños públicos en un radio de 4km.');
         this.aplicarFiltro('todos'); 
       }
     } catch (error) {
       console.error("Error buscando servicios en Overpass:", error);
-      alert('Hubo un error al conectar con el servicio de mapas.');
+      this.mostrarMensaje('Hubo un error al conectar con el servicio de mapas.');
       this.aplicarFiltro('todos'); 
     } finally {
       await loading.dismiss();
@@ -415,12 +531,11 @@ export class HomePage implements OnInit {
     const urlWiki = `https://es.wikipedia.org/w/api.php?action=query&prop=extracts|pageimages&pageids=${pageid}&exintro=true&explaintext=true&piprop=original&format=json&origin=*`;
     
     try {
-      const respuesta = await fetch(urlWiki);
-      const data = await respuesta.json();
+      const resNativa = await CapacitorHttp.get({ url: urlWiki });
+      const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
       const paginaInfo = data.query.pages[pageid];
       
       const historiaTexto = paginaInfo.extract || 'No existen registros detallados.';
-      
       const textoLimpio = historiaTexto.replace(/\n/g, ' ').trim();
       let historiaCorta = textoLimpio;
       if (textoLimpio.length > 100) {
@@ -429,7 +544,7 @@ export class HomePage implements OnInit {
 
       let imagenEncontrada = null;
       if (paginaInfo.original && paginaInfo.original.source) {
-         imagenEncontrada = paginaInfo.original.source;
+        imagenEncontrada = paginaInfo.original.source;
       }
 
       this.lugarSeleccionado = { 
@@ -440,7 +555,6 @@ export class HomePage implements OnInit {
       };
 
       this.mostrarTarjeta = true;
-
     } catch (error) {
       this.lugarSeleccionado = { 
         titulo: titulo, distancia: distancia, lat: lat, lon: lon, imagen: null,
@@ -456,17 +570,17 @@ export class HomePage implements OnInit {
   }
 
   async abrirMenuIdiomas() {
+    const plan = this.planNormalizado;
     const botones: any[] = this.idiomasDisponibles.map(idioma => {
       const estaSeleccionado = this.idiomaActivo === idioma.codigo;
       
       let tieneAcceso = false;
-      
-      if (this.tipoPlanUsuario === 'viajero') {
-        tieneAcceso = true; // Viajero Escritor tiene todos los idiomas
-      } else if (this.tipoPlanUsuario === 'explorador') {
-        tieneAcceso = ['es', 'en', 'pt'].includes(idioma.codigo); // Español, Inglés y Portugués
+      if (plan.includes('viajero')) {
+        tieneAcceso = true;
+      } else if (plan.includes('explorador')) {
+        tieneAcceso = ['es', 'en', 'pt'].includes(idioma.codigo);
       } else {
-        tieneAcceso = ['es', 'en'].includes(idioma.codigo); // Observador solo Español e Inglés
+        tieneAcceso = ['es', 'en'].includes(idioma.codigo);
       }
 
       let icono: string | undefined = estaSeleccionado ? 'checkmark' : undefined;
@@ -521,31 +635,53 @@ export class HomePage implements OnInit {
     this.traduciendoTexto = true;
     this.cdr.detectChanges();
 
-    const textoBase = this.lugarSeleccionado.traducciones['es'].completa;
+    const textoBase = this.lugarSeleccionado?.traducciones?.['es']?.completa || '';
+    const targetLang = codigoIdioma === 'zh' ? 'zh-CN' : codigoIdioma;
+    let textoTraducido = '';
 
+    // MyMemory primero (CORS permitido); Google como respaldo.
     try {
-      const targetLang = codigoIdioma === 'zh' ? 'zh-CN' : codigoIdioma; 
-      const urlTrad = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(textoBase)}`;
-      
-      const respuesta = await fetch(urlTrad);
-      const data = await respuesta.json();
-      
-      if (data && data[0]) {
-        const textoTraducido = data[0].map((item: any) => item[0]).join('');
-        
-        let cortaTrad = textoTraducido;
-        if (textoTraducido.length > 100) {
-          cortaTrad = textoTraducido.substring(0, 100) + '...';
+      const langpair = encodeURIComponent(`es|${targetLang}`);
+      const trozos = textoBase.match(/[\s\S]{1,450}/g) || [textoBase];
+      const partes: string[] = [];
+      for (const trozo of trozos) {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trozo)}&langpair=${langpair}`;
+        const res = await CapacitorHttp.get({ url });
+        if (res.status === 200) {
+          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          if (data?.responseData?.translatedText) partes.push(data.responseData.translatedText);
         }
-
-        this.lugarSeleccionado.traducciones[codigoIdioma] = {
-          corta: cortaTrad,
-          completa: textoTraducido
-        };
       }
+      textoTraducido = partes.join(' ').trim();
     } catch (error) {
+      console.warn('Fallo MyMemory, probando Google Translate...', error);
+    }
+
+    if (!textoTraducido) {
+      try {
+        const urlTrad = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(textoBase)}`;
+        const resNativa = await CapacitorHttp.get({ url: urlTrad });
+        const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
+        if (data && data[0]) {
+          textoTraducido = data[0].map((item: any) => item[0]).join('');
+        }
+      } catch (error) {
+        console.warn('Fallo Google Translate:', error);
+      }
+    }
+
+    if (textoTraducido) {
+      let cortaTrad = textoTraducido;
+      if (textoTraducido.length > 100) {
+        cortaTrad = textoTraducido.substring(0, 100) + '...';
+      }
       this.lugarSeleccionado.traducciones[codigoIdioma] = {
-        corta: 'Translation error.', completa: 'Error translating the text.'
+        corta: cortaTrad,
+        completa: textoTraducido
+      };
+    } else {
+      this.lugarSeleccionado.traducciones[codigoIdioma] = {
+        corta: 'No se pudo traducir.', completa: 'No se pudo traducir en este momento.'
       };
     }
 
@@ -606,30 +742,122 @@ export class HomePage implements OnInit {
     this.cdr.detectChanges(); 
   }
 
+  // --- CÁLCULO NATIVO DE RUTAS PEATONALES Y ALTERNATIVAS ---
+
+  private async trazarRutasPeatonales(waypoints: L.LatLng[], nombreTour: string) {
+    if (!this.map || !this.rutasLayer) return;
+    this.rutasLayer.clearLayers();
+
+    const loading = await this.loadingCtrl.create({
+      spinner: null,
+      cssClass: 'loading-geonyx',
+      message: `Calculando ${nombreTour}...`
+    });
+    await loading.present();
+
+    const coordsStr = waypoints.map(p => `${p.lng},${p.lat}`).join(';');
+    const urls = [
+      `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&alternatives=true`,
+      `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&alternatives=true`
+    ];
+    const esValida = (d: any) => !!d && d.code === 'Ok' && Array.isArray(d.routes) && d.routes.length > 0;
+
+    try {
+      let data: any = null;
+      let indiceUsado = -1;
+
+      // Probamos ambos servidores: si el peatonal falla o devuelve vacío, usamos el respaldo.
+      for (let i = 0; i < urls.length; i++) {
+        try {
+          const res = await CapacitorHttp.get({ url: urls[i] });
+          const parsed = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          if (res.status === 200 && esValida(parsed)) {
+            data = parsed;
+            indiceUsado = i;
+            break;
+          }
+        } catch (error) {
+          console.warn('Servidor de rutas no disponible, probando respaldo...', error);
+        }
+      }
+
+      if (!data) {
+        // Sin servicio de rutas: al menos mostramos la guía directa entre los puntos.
+        L.polyline(waypoints, { color: '#7c4dff', weight: 5, dashArray: '10, 10' }).addTo(this.rutasLayer);
+        this.map.fitBounds(L.latLngBounds(waypoints), { padding: [50, 50] });
+        this.navegando = true;
+        this.mostrarMensaje(`${nombreTour}: ruta directa estimada (el servicio de rutas no respondió).`);
+        return;
+      }
+
+      // El servidor peatonal casi siempre devuelve una sola ruta; pedimos la alternativa al otro.
+      if (data.routes.length === 1 && urls.length > 1) {
+        const indiceAlternativa = indiceUsado === 0 ? 1 : 0;
+        try {
+          const resAlt = await CapacitorHttp.get({ url: urls[indiceAlternativa] });
+          const alt = typeof resAlt.data === 'string' ? JSON.parse(resAlt.data) : resAlt.data;
+          if (resAlt.status === 200 && esValida(alt) && alt.routes.length > 1) {
+            data = { ...data, routes: [data.routes[0], alt.routes[1]] };
+          }
+        } catch (error) {
+          console.warn('No se pudo obtener la ruta alternativa.', error);
+        }
+      }
+
+      if (data.routes.length > 1) {
+        L.geoJSON(data.routes[1].geometry, {
+          style: { color: '#7c4dff', weight: 5, opacity: 0.75, dashArray: '10, 10' }
+        }).addTo(this.rutasLayer);
+      }
+
+      const capaPrincipal = L.geoJSON(data.routes[0].geometry, {
+        style: { color: '#2979ff', weight: 6, opacity: 0.95 }
+      }).addTo(this.rutasLayer);
+
+      this.map.fitBounds(capaPrincipal.getBounds(), { padding: [50, 50] });
+      this.navegando = true;
+
+      const distKm = (data.routes[0].distance / 1000).toFixed(2);
+      const minCamino = Math.max(1, Math.round(data.routes[0].duration / 60));
+      const infoAlt = data.routes.length > 1 ? ' (incluye ruta alternativa en morado)' : '';
+
+      this.mostrarMensaje(`${nombreTour}: ${distKm} km • ~${minCamino} min caminando${infoAlt}.`);
+    } catch (error) {
+      console.error('Error trazando rutas:', error);
+      this.mostrarMensaje('No se pudo calcular la ruta. Revisa tu conexión a internet.');
+    } finally {
+      await loading.dismiss();
+      this.cdr.detectChanges();
+    }
+  }
+
   iniciarNavegacion(destinoLat: number, destinoLng: number) {
-    if (!this.userMarker) { alert('Esperando a obtener tu ubicación actual...'); return; }
+    if (!this.userMarker) { 
+      this.mostrarMensaje('Esperando a obtener tu ubicación actual...'); 
+      return; 
+    }
     const miLat = this.userMarker.getLatLng().lat;
     const miLng = this.userMarker.getLatLng().lng;
 
-    if (this.controlRuta) this.map.removeControl(this.controlRuta);
-
-    this.controlRuta = L.Routing.control({
-      waypoints: [ L.latLng(miLat, miLng), L.latLng(destinoLat, destinoLng) ],
-      router: L.Routing.osrmv1({ language: 'es', profile: 'walking' }),
-      routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: true, collapsible: true
-    }).addTo(this.map);
-
-    this.navegando = true; 
     this.cerrarTarjeta(); 
+    this.trazarRutasPeatonales(
+      [L.latLng(miLat, miLng), L.latLng(destinoLat, destinoLng)],
+      'Ruta hacia destino'
+    );
   }
 
   async generarTourDinamico() {
     const tienePermiso = await this.verificarPremium('los Tours Dinámicos Generativos');
     if (!tienePermiso) return;
 
-    if (!this.userMarker) { alert('Esperando a obtener tu ubicación actual...'); return; }
-    if (this.listaLugares.length === 0) return;
-    if (this.controlRuta) this.map.removeControl(this.controlRuta);
+    if (!this.userMarker) { 
+      this.mostrarMensaje('Esperando a obtener tu ubicación actual...'); 
+      return; 
+    }
+    if (this.listaLugares.length === 0) {
+      this.mostrarMensaje('Aún no hay lugares cargados alrededor.');
+      return;
+    }
 
     const miLat = this.userMarker.getLatLng().lat;
     const miLng = this.userMarker.getLatLng().lng;
@@ -638,22 +866,21 @@ export class HomePage implements OnInit {
     const lugaresCercanos = [...this.listaLugares].sort((a, b) => a.dist - b.dist).slice(0, 3); 
     lugaresCercanos.forEach((lugar: any) => puntosNavegacion.push(L.latLng(lugar.lat, lugar.lon)));
 
-    this.controlRuta = L.Routing.control({
-      waypoints: puntosNavegacion,
-      router: L.Routing.osrmv1({ language: 'es', profile: 'walking' }),
-      routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: true, collapsible: true
-    }).addTo(this.map);
-
-    this.navegando = true; 
+    this.trazarRutasPeatonales(puntosNavegacion, 'Tour de Lugares Cercanos');
   }
 
   async generarTourSorpresa() {
     const tienePermiso = await this.verificarPremium('los Tours Sorpresa');
     if (!tienePermiso) return;
 
-    if (!this.userMarker) { alert('Esperando a obtener tu ubicación actual...'); return; }
-    if (this.listaLugares.length === 0) return;
-    if (this.controlRuta) this.map.removeControl(this.controlRuta);
+    if (!this.userMarker) { 
+      this.mostrarMensaje('Esperando a obtener tu ubicación actual...'); 
+      return; 
+    }
+    if (this.listaLugares.length === 0) {
+      this.mostrarMensaje('Aún no hay lugares cargados alrededor.');
+      return;
+    }
 
     const miLat = this.userMarker.getLatLng().lat;
     const miLng = this.userMarker.getLatLng().lng;
@@ -662,17 +889,13 @@ export class HomePage implements OnInit {
     const lugaresAzar = [...this.listaLugares].sort(() => 0.5 - Math.random()).slice(0, 3);
     lugaresAzar.forEach((lugar: any) => puntosNavegacion.push(L.latLng(lugar.lat, lugar.lon)));
 
-    this.controlRuta = L.Routing.control({
-      waypoints: puntosNavegacion,
-      router: L.Routing.osrmv1({ language: 'es', profile: 'walking' }),
-      routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: true, collapsible: true
-    }).addTo(this.map);
-
-    this.navegando = true; 
+    this.trazarRutasPeatonales(puntosNavegacion, 'Tour Alternativo Sorpresa');
   }
 
   cancelarNavegacion() {
-    if (this.controlRuta) { this.map.removeControl(this.controlRuta); this.controlRuta = null; }
+    if (this.rutasLayer) {
+      this.rutasLayer.clearLayers();
+    }
     this.navegando = false;
     this.centrarMapaEnUsuario();
     this.cdr.detectChanges();
@@ -694,7 +917,10 @@ export class HomePage implements OnInit {
 
   iniciarReconocimientoVoz() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) { alert('Tu navegador no soporta búsqueda por voz.'); return; }
+    if (!SpeechRecognition) { 
+      this.mostrarMensaje('Tu dispositivo no soporta búsqueda por voz.'); 
+      return; 
+    }
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'es-CL';
@@ -725,31 +951,24 @@ export class HomePage implements OnInit {
 
     try {
       this.marcadoresLayer.clearLayers();
+      this.rutasLayer.clearLayers();
       this.listaLugares = [];
       this.lugaresFiltrados = [];
       this.textoBuscado = '';
       this.cerrarTarjeta();
-      
-      if (this.controlRuta) {
-        this.map.removeControl(this.controlRuta);
-        this.controlRuta = null;
-      }
       this.navegando = false;
 
-      this.map.invalidateSize();
+      this.map.invalidateSize(true);
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const nuevaLat = position.coords.latitude;
           const nuevaLon = position.coords.longitude;
 
-          if (this.userMarker) {
-            this.userMarker.setLatLng([nuevaLat, nuevaLon]);
-          }
+          this.colocarMarcadorUsuario(L.latLng(nuevaLat, nuevaLon));
           this.map.flyTo([nuevaLat, nuevaLon], 15, { animate: true, duration: 1 });
 
           await this.buscarLugaresWikipedia(nuevaLat, nuevaLon);
-          
           await loading.dismiss();
         },
         async (error) => {
@@ -764,7 +983,6 @@ export class HomePage implements OnInit {
         },
         { enableHighAccuracy: true, timeout: 6000 }
       );
-
     } catch (error) {
       console.error("Error fatal al refrescar:", error);
       await loading.dismiss();

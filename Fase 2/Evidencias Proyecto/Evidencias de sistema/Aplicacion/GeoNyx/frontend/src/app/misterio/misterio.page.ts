@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+﻿import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms'; 
 import { 
@@ -15,10 +15,11 @@ import {
   micOffOutline, bookOutline, navigateOutline, volumeHighOutline, volumeMuteOutline, 
   menuOutline, sunnyOutline, locationOutline, mic, lockClosed,
   mapOutline, footstepsOutline, shuffleOutline, languageOutline,
-  pencilOutline, trashOutline, starOutline, warningOutline, star, refreshOutline
+  pencilOutline, trashOutline, starOutline, warningOutline, star, refreshOutline, checkmark, close
 } from 'ionicons/icons'; 
 import * as L from 'leaflet';
 import { NgIf, SlicePipe } from '@angular/common';
+import { CapacitorHttp } from '@capacitor/core';
 import { ApiService } from '../services/api';
 
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
@@ -45,14 +46,17 @@ L.Marker.prototype.options.icon = iconDefault;
     IonRow, IonCol, IonSpinner,
   ]
 })
-export class MisterioPage implements OnInit {
+export class MisterioPage implements OnInit, OnDestroy {
   private map!: L.Map;
   private userMarker: L.Marker | null = null;
   private pinTemporal: L.Marker | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private debeIniciarMapa: boolean = false;
+  private vistaVisible: boolean = false;
   
   mostrarTarjeta: boolean = false;
   esManual: boolean = false; 
-  leyendaSeleccionada: any = { titulo: '', historia: '', autor: '' };
+  leyendaSeleccionada: any = { titulo: '', historia: '', autor: '', traducciones: {} };
   puntuacionActual: number = 0;
   promedioActual: string = '0.0';
 
@@ -90,19 +94,23 @@ export class MisterioPage implements OnInit {
     'en': { escritoPor: 'Written by', autor: 'Author', leerMas: 'READ MORE', leerMenos: 'READ LESS', queParecio: 'What did you think of this mystery?', promedio: 'Average', reportar: 'Report story', editar: 'Edit', borrar: 'Delete', cerrar: 'CLOSE' },
     'pt': { escritoPor: 'Escrito por', autor: 'Autor', leerMas: 'LER MAIS', leerMenos: 'LER MENOS', queParecio: 'O que você achou deste mistério?', promedio: 'Média', reportar: 'Denunciar história', editar: 'Editar', borrar: 'Excluir', cerrar: 'FECHAR' },
     'fr': { escritoPor: 'Écrit par', autor: 'Auteur', leerMas: 'LIRE LA SUITE', leerMenos: 'RÉDUIRE', queParecio: 'Qu\'avez-vous pensé de ce mystère ?', promedio: 'Moyenne', reportar: 'Signaler l\'histoire', editar: 'Éditer', borrar: 'Supprimer', cerrar: 'FERMER' },
-    'de': { escritoPor: 'Geschrieben von', autor: 'Autor', leerMas: 'MEHR LESEN', leerMenos: "WENIGER LESEN", queParecio: 'Wie fanden Sie dieses Geheimnis?', promedio: 'Durchschnitt', reportar: 'Geschichte melden', editar: 'Bearbeiten', borrar: 'Löschen', cerrar: 'SCHLIESSEN' },
+    'de': { escritoPor: 'Geschrieben von', autor: 'Autor', leerMas: 'MEHR LESEN', leerMenos: 'WENIGER LESEN', queParecio: 'Wie fanden Sie dieses Geheimnis?', promedio: 'Durchschnitt', reportar: 'Geschichte melden', editar: 'Bearbeiten', borrar: 'Löschen', cerrar: 'SCHLIESSEN' },
     'zh': { escritoPor: '作者', autor: '作者', leerMas: '阅读更多', leerMenos: '收起', queParecio: '你觉得这个谜团怎么样？', promedio: '平均', reportar: '举报故事', editar: '编辑', borrar: '删除', cerrar: '关闭' }
   };
 
+  private get planNormalizado(): string {
+    return (this.tipoPlanUsuario || 'observador').toLowerCase().trim();
+  }
+
   get maxCaracteres(): number {
-    if (this.tipoPlanUsuario === 'viajero') return 22000;
-    if (this.tipoPlanUsuario === 'explorador') return 10000;
+    if (this.planNormalizado.includes('viajero')) return 22000;
+    if (this.planNormalizado.includes('explorador')) return 10000;
     return 4500;
   }
 
   get maxHistorias(): number {
-    if (this.tipoPlanUsuario === 'viajero') return 25;
-    if (this.tipoPlanUsuario === 'explorador') return 10;
+    if (this.planNormalizado.includes('viajero')) return 25;
+    if (this.planNormalizado.includes('explorador')) return 10;
     return 5;
   }
 
@@ -121,7 +129,8 @@ export class MisterioPage implements OnInit {
     addIcons({ 
       moonOutline, locateOutline, addOutline, closeOutline, micOutline, mic, 
       volumeHighOutline, volumeMuteOutline, menuOutline, pencilOutline, 
-      trashOutline, starOutline, warningOutline, star, lockClosed, refreshOutline
+      trashOutline, starOutline, warningOutline, star, lockClosed, refreshOutline,
+      checkmark, close
     });
 
     const nav = this.router.getCurrentNavigation();
@@ -132,19 +141,64 @@ export class MisterioPage implements OnInit {
 
   ionViewWillEnter() {
     this.miUsuarioId = localStorage.getItem('usuario_id');
-    this.tipoPlanUsuario = localStorage.getItem('tipo_plan') || 'observador'; 
+    this.tipoPlanUsuario = (localStorage.getItem('tipo_plan') || 'observador').toLowerCase();
+    this.cdr.detectChanges();
+  }
+
+  ionViewDidEnter() {
+    // Crear el mapa cuando la vista ya es visible evita el típico mapa a medias al cambiar de modo.
+    this.vistaVisible = true;
+    this.iniciarMapaSiCorresponde();
+
+    const invalidar = () => {
+      if (this.map) {
+        this.map.invalidateSize(true);
+        window.dispatchEvent(new Event('resize'));
+      }
+    };
+    setTimeout(invalidar, 150);
+    setTimeout(invalidar, 500);
+    setTimeout(invalidar, 1200);
+  }
+
+  ionViewWillLeave() {
+    this.vistaVisible = false;
+    this.destruirMapa();
+    this.debeIniciarMapa = true;
   }
 
   ngOnInit() {
     this.miUsuarioId = localStorage.getItem('usuario_id');
+    this.tipoPlanUsuario = (localStorage.getItem('tipo_plan') || 'observador').toLowerCase();
     if (this.esManual) {
-      this.initMap();
+      this.debeIniciarMapa = true;
     } else {
       this.verificarHorario();
     }
   }
 
-  // --- COMPONENT SPINNER CON CSS DEL MODO HISTÓRICO ---
+  ngOnDestroy() {
+    this.destruirMapa();
+  }
+
+  private iniciarMapaSiCorresponde() {
+    if (this.vistaVisible && this.debeIniciarMapa && !this.map) {
+      this.debeIniciarMapa = false;
+      this.initMap();
+    }
+  }
+
+  private destruirMapa() {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    if (this.map) {
+      this.map.remove();
+      (this.map as any) = null;
+    }
+    this.userMarker = null;
+    this.pinTemporal = null;
+  }
+
   async mostrarCargando(mensaje: string = 'Cargando...') {
     const loading = await this.loadingCtrl.create({
       message: mensaje,
@@ -156,7 +210,7 @@ export class MisterioPage implements OnInit {
   }
 
   async verificarPremium(funcionDestacada: string): Promise<boolean> {
-    if (this.tipoPlanUsuario !== 'observador') {
+    if (!this.planNormalizado.includes('observador')) {
       return true; 
     }
 
@@ -186,7 +240,8 @@ export class MisterioPage implements OnInit {
     const hora = await this.api.obtenerHoraReal();
     
     if (this.esManual) {
-      this.initMap();
+      this.debeIniciarMapa = true;
+      this.iniciarMapaSiCorresponde();
       return;
     }
 
@@ -194,72 +249,97 @@ export class MisterioPage implements OnInit {
       this.mostrarMensaje('El Modo Misterio automático solo funciona de 20:00 a 06:00 hrs.', 'warning');
       this.router.navigate(['/home']);
     } else {
-      this.initMap();
+      this.debeIniciarMapa = true;
+      this.iniciarMapaSiCorresponde();
     }
   }
 
   async irAHistorico() {
-    if (this.tipoPlanUsuario === 'observador') {
+    if (this.planNormalizado.includes('observador')) {
       this.mostrarMensaje('El cambio manual de modo es exclusivo para niveles Explorador y Viajero.', 'warning');
       return; 
     }
     this.router.navigate(['/home'], { state: { manual: true } });
   }
 
-  initMap() {
-    this.map = L.map('map-misterio', { attributionControl: false }).setView([-33.4915, -70.7190], 15);
+  async initMap() {
+    if (this.map) return;
+
+    const loading = await this.mostrarCargando('Cargando Modo Misterio...');
+
+    try {
+      this.map = L.map('map-misterio', { 
+        attributionControl: false,
+        tapTolerance: 15
+      }).setView([-33.4915, -70.7190], 15);
+    } catch (error) {
+      console.error('No se pudo inicializar el mapa misterio:', error);
+      await loading.dismiss();
+      this.debeIniciarMapa = true;
+      return;
+    }
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-      className: 'mapa-oscuro-filtro', maxZoom: 19
+      className: 'mapa-oscuro-filtro', 
+      maxZoom: 19
     }).addTo(this.map);
 
-    setTimeout(() => { this.map.invalidateSize(); }, 400);
-
-    this.map.locate({ setView: false });
-
-    this.map.on('locationfound', (e) => {
-      setTimeout(() => { 
-        if (this.map) {
-          this.map.invalidateSize(); 
-          this.map.setView(e.latlng, 16); 
-        }
-      }, 400);
-
-      this.map.on('click', async (e: L.LeafletMouseEvent) => {
-        if (!this.userMarker) {
-          window.alert("Espera a que obtengamos tu ubicación actual primero.");
-          return;
-        }
-
-        const miUbicacion = this.userMarker.getLatLng();
-        if (!miUbicacion || isNaN(miUbicacion.lat) || isNaN(miUbicacion.lng)) return;
-
-        const distanciaMetros = miUbicacion.distanceTo(e.latlng);
-
-        if (distanciaMetros > 5000) {
-          const alertaLejos = await this.alertController.create({
-            header: 'Muy Lejos',
-            message: `Ese punto está a ${(distanciaMetros / 1000).toFixed(1)} km. Límite de 5 km.`,
-            buttons: ['Entendido']
-          });
-          await alertaLejos.present();
-          return;
-        }
-
-        if (this.pinTemporal) this.map.removeLayer(this.pinTemporal);
-
-        this.pinTemporal = L.marker(e.latlng).addTo(this.map);
-        
-        const textoPopup = document.createElement('div');
-        textoPopup.innerHTML = '<b style="color: #ff00b7; cursor: pointer; display: block; padding: 5px;"> Toca para crear una leyenda</b>';
-        textoPopup.addEventListener('click', () => {
-          this.formularioNuevaLeyenda(e.latlng.lat, e.latlng.lng);
-          this.pinTemporal?.closePopup();
-        });
-
-        this.pinTemporal.bindPopup(textoPopup).openPopup();
-        this.pinTemporal.on('click', () => { this.formularioNuevaLeyenda(e.latlng.lat, e.latlng.lng); });
+    // Observa cambios de tamaño del contenedor Ionic para evitar mapas cortados
+    const mapEl = document.getElementById('map-misterio');
+    if (mapEl && 'ResizeObserver' in window) {
+      this.resizeObserver = new ResizeObserver(() => {
+        if (this.map) this.map.invalidateSize(true);
       });
+      this.resizeObserver.observe(mapEl);
+    }
+
+    setTimeout(() => { if (this.map) this.map.invalidateSize(true); }, 300);
+    setTimeout(() => { if (this.map) this.map.invalidateSize(true); }, 900);
+    setTimeout(() => { if (this.map) this.map.invalidateSize(true); }, 1500);
+
+    this.map.on('click', async (e: L.LeafletMouseEvent) => {
+      if (!this.userMarker) {
+        this.mostrarMensaje('Espera a que obtengamos tu ubicación actual primero.', 'warning');
+        return;
+      }
+
+      const miUbicacion = this.userMarker.getLatLng();
+      if (!miUbicacion || isNaN(miUbicacion.lat) || isNaN(miUbicacion.lng)) return;
+
+      const distanciaMetros = miUbicacion.distanceTo(e.latlng);
+
+      if (distanciaMetros > 5000) {
+        const alertaLejos = await this.alertController.create({
+          header: 'Muy Lejos',
+          message: `Ese punto está a ${(distanciaMetros / 1000).toFixed(1)} km. Límite de 5 km.`,
+          buttons: ['Entendido']
+        });
+        await alertaLejos.present();
+        return;
+      }
+
+      if (this.pinTemporal) this.map.removeLayer(this.pinTemporal);
+
+      this.pinTemporal = L.marker(e.latlng).addTo(this.map);
+      
+      const textoPopup = document.createElement('div');
+      textoPopup.innerHTML = '<b style="color: #ff00b7; cursor: pointer; display: block; padding: 5px;">Toca para crear una leyenda</b>';
+      textoPopup.addEventListener('click', () => {
+        this.formularioNuevaLeyenda(e.latlng.lat, e.latlng.lng);
+        this.pinTemporal?.closePopup();
+      });
+
+      this.pinTemporal.bindPopup(textoPopup).openPopup();
+      this.pinTemporal.on('click', () => { this.formularioNuevaLeyenda(e.latlng.lat, e.latlng.lng); });
+    });
+
+    this.map.locate({ setView: false, enableHighAccuracy: true, timeout: 7000 });
+
+    this.map.on('locationfound', async (e) => {
+      if (this.map) {
+        this.map.invalidateSize(true); 
+        this.map.setView(e.latlng, 16); 
+      }
       
       const iconoUbicacion = L.divIcon({
         className: 'icono-ubicacion-limpio',
@@ -274,13 +354,21 @@ export class MisterioPage implements OnInit {
           .addTo(this.map).bindPopup('<b style="color: #ff00b7; font-size: 14px;">¡Estás Aquí!</b>').openPopup();
       }
       
+      await loading.dismiss();
       this.cargarLeyendasBackend(e.latlng.lat, e.latlng.lng);
+    });
+
+    this.map.on('locationerror', async () => {
+      if (this.map) this.map.invalidateSize(true);
+      await loading.dismiss();
+      this.cargarLeyendasBackend(-33.4915, -70.7190);
     });
   }
 
   async recargarUbicacion() {
     if (this.map) {
-      this.map.locate({ setView: true });
+      this.map.invalidateSize(true);
+      this.map.locate({ setView: true, enableHighAccuracy: true });
 
       if (this.userMarker) {
         const pos = this.userMarker.getLatLng();
@@ -310,7 +398,6 @@ export class MisterioPage implements OnInit {
 
     this.api.getLeyendas().subscribe({
       next: (leyendasDelServidor) => {
-        // Limpiamos únicamente marcadores de leyendas previas
         this.map.eachLayer((layer: any) => {
           if (layer instanceof L.Marker && layer !== this.userMarker && layer !== this.pinTemporal) {
             this.map.removeLayer(layer);
@@ -322,19 +409,36 @@ export class MisterioPage implements OnInit {
             const latNum = Number(leyenda.latitud ?? leyenda.lat);
             const lonNum = Number(leyenda.longitud ?? leyenda.lon ?? leyenda.lng);
 
-            // Validación estricta para evitar errores NaN en Leaflet
             if (!isNaN(latNum) && !isNaN(lonNum) && latNum !== 0 && lonNum !== 0) {
-              const iconoLeyenda = L.icon({
-                iconUrl: 'assets/icon/LibroNoche.png',
-                iconSize: [45, 45], iconAnchor: [17, 17], popupAnchor: [0, -17]
+              const iconoLeyenda = L.divIcon({
+                className: 'marcador-leyenda',
+                html: '<button type="button" class="marcador-leyenda-btn" aria-label="Leer leyenda"><img src="assets/icon/LibroNoche.png" alt="" draggable="false" /></button>',
+                iconSize: [45, 45],
+                iconAnchor: [22, 22],
+                popupAnchor: [0, -22]
               });
 
-              const marcador = L.marker([latNum, lonNum], { icon: iconoLeyenda }).addTo(this.map);
+              const marcador = L.marker([latNum, lonNum], { icon: iconoLeyenda, interactive: true, keyboard: true }).addTo(this.map);
 
-              marcador.on('click', () => {
-                this.map.flyTo([latNum, lonNum], 16, { animate: true, duration: 0.5 });
-                this.abrirTarjetaLeyenda(leyenda); 
-              });
+              let ultimaApertura = 0;
+              const abrir = () => {
+                const ahora = Date.now();
+                if (ahora - ultimaApertura < 500) return;
+                ultimaApertura = ahora;
+                if (this.map) this.map.flyTo([latNum, lonNum], 16, { animate: true, duration: 0.5 });
+                this.abrirTarjetaLeyenda(leyenda);
+              };
+
+              marcador.on('click', abrir);
+
+              const boton = marcador.getElement()?.querySelector('.marcador-leyenda-btn');
+              if (boton) {
+                boton.addEventListener('click', (ev: Event) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  abrir();
+                });
+              }
             }
           });
         }
@@ -348,7 +452,7 @@ export class MisterioPage implements OnInit {
   }
 
   abrirTarjetaLeyenda(leyenda: any) {
-    this.leyendaSeleccionada = leyenda;
+    this.leyendaSeleccionada = { ...leyenda };
     this.leyendaSeleccionada.autor = leyenda.alias_autor || 'Anónimo'; 
     
     const token = localStorage.getItem('token');
@@ -364,7 +468,6 @@ export class MisterioPage implements OnInit {
       this.api.obtenerEstadoValoracion(idDeLaHistoria, idUsuarioNumerico).subscribe({
         next: (datos: any) => {
           this.promedioActual = Number(datos.promedio).toFixed(1); 
-          
           if (datos.mi_voto > 0) {
             this.puntuacionActual = datos.mi_voto; 
           }
@@ -376,10 +479,11 @@ export class MisterioPage implements OnInit {
 
     this.idiomaActivo = 'es';
     this.leyendoAudio = false;
+    const textoHistoria = leyenda.historia || '';
     this.leyendaSeleccionada.traducciones = {
       'es': { 
-        completa: leyenda.historia, 
-        corta: leyenda.historia.length > 100 ? leyenda.historia.substring(0, 100) + '...' : leyenda.historia 
+        completa: textoHistoria, 
+        corta: textoHistoria.length > 100 ? textoHistoria.substring(0, 100) + '...' : textoHistoria 
       }
     };
 
@@ -403,7 +507,10 @@ export class MisterioPage implements OnInit {
 
   iniciarReconocimientoVoz(campo: 'titulo' | 'historia') {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) { window.alert('Tu navegador no soporta dictado por voz.'); return; }
+    if (!SpeechRecognition) { 
+      this.mostrarMensaje('Tu dispositivo no soporta dictado por voz.', 'warning'); 
+      return; 
+    }
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'es-CL';
@@ -440,15 +547,10 @@ export class MisterioPage implements OnInit {
       const alertaLogin = await this.alertController.create({
         message: 'Para compartir tus historias, debes de iniciar sesión.',
         buttons: [
-          {
-            text: 'Quizás más tarde',
-            role: 'cancel'
-          },
+          { text: 'Quizás más tarde', role: 'cancel' },
           {
             text: 'Iniciar sesión',
-            handler: () => {
-              this.router.navigate(['/login']);
-            }
+            handler: () => { this.router.navigate(['/login']); }
           }
         ]
       });
@@ -459,7 +561,7 @@ export class MisterioPage implements OnInit {
     this.miUsuarioId = miIdActual; 
 
     if (!this.userMarker) {
-      window.alert("Espera a obtener tu ubicación.");
+      this.mostrarMensaje('Espera a obtener tu ubicación.', 'warning');
       return;
     }
     
@@ -490,13 +592,11 @@ export class MisterioPage implements OnInit {
 
   async publicarDesdeModal() {
     if (this.nuevaLeyenda.titulo.trim() !== '' && this.nuevaLeyenda.historia.trim() !== '') {
-      
       if (this.esEdicion && this.leyendaEditandoId) {
         this.actualizarLeyendaBackend(this.leyendaEditandoId, this.nuevaLeyenda.titulo, this.nuevaLeyenda.historia);
       } else {
         this.guardarLeyendaBackend(this.nuevaLeyenda.titulo, this.nuevaLeyenda.historia, this.nuevaLeyenda.lat, this.nuevaLeyenda.lon);
       }
-      
       this.cerrarModalLeyenda();
     } else {
       const alertaFaltan = await this.alertController.create({
@@ -518,14 +618,14 @@ export class MisterioPage implements OnInit {
     };
 
     this.api.crearLeyenda(datosLeyenda).subscribe({
-      next: (respuesta) => {
+      next: () => {
         loading.dismiss();
         this.mostrarMensaje('¡Leyenda publicada en el mapa!');
         this.recargarPinesMapa(); 
       },
-      error: (err: any) => { 
+      error: () => { 
         loading.dismiss();
-        window.alert("Hubo un error al guardar tu leyenda."); 
+        this.mostrarMensaje('Hubo un error al guardar tu leyenda.', 'danger'); 
       }
     });
   }
@@ -533,17 +633,14 @@ export class MisterioPage implements OnInit {
   editarLeyenda() {
     this.esEdicion = true; 
     this.leyendaEditandoId = this.leyendaSeleccionada.id_leyenda; 
-    
     this.nuevaLeyenda.titulo = this.leyendaSeleccionada.titulo;
     this.nuevaLeyenda.historia = this.leyendaSeleccionada.historia;
-    
     this.mostrarModalLeyenda = true;
     this.cerrarTarjeta();
   }
 
   async actualizarLeyendaBackend(id: number, titulo: string, historia: string) {
     const loading = await this.mostrarCargando('Actualizando tu leyenda...');
-
     const datosUpdate = { titulo: titulo, historia: historia };
     
     this.api.actualizarLeyenda(id, datosUpdate).subscribe({
@@ -555,7 +652,7 @@ export class MisterioPage implements OnInit {
       error: (err: any) => { 
         loading.dismiss();
         console.error(err); 
-        window.alert("Error al actualizar la leyenda."); 
+        this.mostrarMensaje('Error al actualizar la leyenda.', 'danger'); 
       }
     });
   }
@@ -571,7 +668,6 @@ export class MisterioPage implements OnInit {
           role: 'destructive',
           handler: async () => {
             const loading = await this.mostrarCargando('Eliminando leyenda...');
-
             this.api.borrarLeyenda(this.leyendaSeleccionada.id_leyenda).subscribe({
               next: () => {
                 loading.dismiss();
@@ -582,7 +678,7 @@ export class MisterioPage implements OnInit {
               error: (err: any) => { 
                 loading.dismiss();
                 console.error(err); 
-                window.alert("Error al borrar."); 
+                this.mostrarMensaje('Error al borrar.', 'danger'); 
               }
             });
           }
@@ -607,7 +703,6 @@ export class MisterioPage implements OnInit {
     }
 
     const idUsuarioActual = parseInt(idUsuarioActualStr);
-
     this.puntuacionActual = nota;
     this.cdr.detectChanges(); 
 
@@ -678,7 +773,6 @@ export class MisterioPage implements OnInit {
 
   async enviarReporte(motivo: string) {
     const loading = await this.mostrarCargando('Enviando reporte...');
-
     const miId = Number(localStorage.getItem('usuario_id'));
     this.api.reportarLeyenda(this.leyendaSeleccionada.id_leyenda, { id_usuario: miId, motivo: motivo })
       .subscribe({
@@ -708,17 +802,19 @@ export class MisterioPage implements OnInit {
     await toast.present();
   }
 
-  // --- SISTEMA MULTI-IDIOMA Y AUDIO (OPTIMIZADO) ---
+  // --- SISTEMA MULTI-IDIOMA NATIVO CON CAPACITOR HTTP (SIN BLOQUEO CORS) ---
 
   async abrirMenuIdiomas() {
+    this.tipoPlanUsuario = (localStorage.getItem('tipo_plan') || this.tipoPlanUsuario || 'observador').toLowerCase();
+    const plan = this.planNormalizado;
+
     const botones: any[] = this.idiomasDisponibles.map(idioma => {
       const estaSeleccionado = this.idiomaActivo === idioma.codigo;
       
       let tieneAcceso = false;
-      
-      if (this.tipoPlanUsuario === 'viajero') {
+      if (plan.includes('viajero')) {
         tieneAcceso = true; 
-      } else if (this.tipoPlanUsuario === 'explorador') {
+      } else if (plan.includes('explorador')) {
         tieneAcceso = ['es', 'en', 'pt'].includes(idioma.codigo); 
       } else {
         tieneAcceso = ['es', 'en'].includes(idioma.codigo); 
@@ -768,6 +864,15 @@ export class MisterioPage implements OnInit {
     this.detenerAudio(); 
     this.idiomaActivo = codigoIdioma;
 
+    if (!this.leyendaSeleccionada.traducciones) {
+      this.leyendaSeleccionada.traducciones = {
+        'es': {
+          completa: this.leyendaSeleccionada.historia || '',
+          corta: (this.leyendaSeleccionada.historia || '').substring(0, 100) + '...'
+        }
+      };
+    }
+
     if (this.leyendaSeleccionada.traducciones[codigoIdioma]) {
       this.cdr.detectChanges();
       return;
@@ -776,32 +881,66 @@ export class MisterioPage implements OnInit {
     this.traduciendoTexto = true;
     this.cdr.detectChanges();
 
-    const textoBase = this.leyendaSeleccionada.traducciones['es'].completa;
+    const textoBase = this.leyendaSeleccionada.traducciones['es']?.completa || '';
+    const targetLang = codigoIdioma === 'zh' ? 'zh-CN' : codigoIdioma; 
+    let textoTraducido = '';
 
+    if (!textoBase.trim()) {
+      this.idiomaActivo = 'es';
+      this.traduciendoTexto = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    // 1. MyMemory es el primario: permite CORS y no bloquea como translate.googleapis.com.
+    //    Se divide el texto en trozos de 450 caracteres para no perder parte de la leyenda.
     try {
-      const targetLang = codigoIdioma === 'zh' ? 'zh-CN' : codigoIdioma; 
-      const urlTrad = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(textoBase)}`;
-      
-      const respuesta = await fetch(urlTrad);
-      const data = await respuesta.json();
-      
-      if (data && data[0]) {
-        const textoTraducido = data[0].map((item: any) => item[0]).join('');
-        
-        let cortaTrad = textoTraducido;
-        if (textoTraducido.length > 100) {
-          cortaTrad = textoTraducido.substring(0, 100) + '...';
-        }
+      const langpair = encodeURIComponent(`es|${targetLang}`);
+      const trozos = textoBase.match(/[\s\S]{1,450}/g) || [textoBase];
+      const partes: string[] = [];
 
-        this.leyendaSeleccionada.traducciones[codigoIdioma] = {
-          corta: cortaTrad,
-          completa: textoTraducido
-        };
+      for (const trozo of trozos) {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trozo)}&langpair=${langpair}`;
+        const res = await CapacitorHttp.get({ url });
+        if (res.status === 200) {
+          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+          const parte = data?.responseData?.translatedText;
+          if (parte) partes.push(parte);
+        }
       }
-    } catch (error) {
+      textoTraducido = partes.join(' ').trim();
+    } catch (e) {
+      console.warn('Fallo MyMemory, probando Google Translate...', e);
+    }
+
+    // 2. Google Translate como respaldo
+    if (!textoTraducido) {
+      try {
+        const urlTrad = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(textoBase)}`;
+        const resNativa = await CapacitorHttp.get({ url: urlTrad });
+        if (resNativa.status === 200) {
+          const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            textoTraducido = data[0].map((item: any) => item[0]).join('');
+          }
+        }
+      } catch (e) {
+        console.warn('Fallo Google Translate:', e);
+      }
+    }
+
+    if (textoTraducido) {
+      const cortaTrad = textoTraducido.length > 100 
+        ? textoTraducido.substring(0, 100) + '...' 
+        : textoTraducido;
+
       this.leyendaSeleccionada.traducciones[codigoIdioma] = {
-        corta: 'Translation error.', completa: 'Error translating the text.'
+        corta: cortaTrad,
+        completa: textoTraducido
       };
+    } else {
+      this.idiomaActivo = 'es';
+      this.mostrarMensaje('No se pudo traducir en este momento.', 'warning');
     }
 
     this.traduciendoTexto = false;
@@ -868,9 +1007,10 @@ export class MisterioPage implements OnInit {
   }
 
   get idiomasPermitidos(): any[] {
-    if (this.tipoPlanUsuario === 'viajero') {
+    const plan = this.planNormalizado;
+    if (plan.includes('viajero')) {
       return this.idiomasDisponibles; 
-    } else if (this.tipoPlanUsuario === 'explorador') {
+    } else if (plan.includes('explorador')) {
       return this.idiomasDisponibles.filter(i => ['es', 'en', 'pt'].includes(i.codigo));
     } else {
       return this.idiomasDisponibles.filter(i => ['es', 'en'].includes(i.codigo)); 
