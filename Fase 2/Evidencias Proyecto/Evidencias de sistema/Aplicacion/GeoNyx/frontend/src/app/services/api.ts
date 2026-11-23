@@ -1,15 +1,29 @@
 ﻿import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  // Asegúrate de que diga [https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com) y NO 127.0.0.1
+  // Backend en Render (nunca 127.0.0.1 en el APK)
   private apiUrl = 'https://proyecto-capstone-1-wm9z.onrender.com'; 
 
   constructor(private http: HttpClient) { }
+
+  // Servicios externos proxeados por el backend (el teléfono no siempre puede llamarlos directo)
+  getRutas(coords: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/rutas`, { params: { coords } });
+  }
+
+  traducir(texto: string, idioma: string): Observable<any> {
+    const params = new HttpParams().set('texto', texto).set('idioma', idioma);
+    return this.http.get(`${this.apiUrl}/traducir`, { params });
+  }
+
+  getWikipedia(pageid: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/wikipedia`, { params: { pageid: String(pageid) } });
+  }
 
   getLeyendas(): Observable<any> {
     return this.http.get(`${this.apiUrl}/leyendas`);

@@ -1,5 +1,5 @@
-﻿<ion-header class="ion-no-border">
-  <ion-toolbar>
+﻿<ion-header class="ion-no-border toolbar-historico">
+  <ion-toolbar class="toolbar-historico">
     <ion-buttons slot="start">
       <ion-button (click)="abrirMenu()">
         <ion-icon name="menu-outline" style="font-size: 32px; margin-left: 10px; color: white;"></ion-icon>
@@ -23,7 +23,7 @@
     </ion-buttons>
   </ion-toolbar>
 
-  <ion-toolbar>
+  <ion-toolbar class="toolbar-historico">
     <ion-searchbar 
       [value]="textoBuscado"
       placeholder="Explorando Historias" 

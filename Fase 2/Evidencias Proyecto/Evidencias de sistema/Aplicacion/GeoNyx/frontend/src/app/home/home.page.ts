@@ -17,6 +17,7 @@ import {
 import * as L from 'leaflet';
 import { NgIf, NgClass, NgFor } from '@angular/common';
 import { CapacitorHttp } from '@capacitor/core';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../services/api';
 
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
@@ -521,51 +522,44 @@ export class HomePage implements OnInit, OnDestroy {
     this.esServicio = false; 
     this.mostrarTarjeta = false; 
 
-    const loading = await this.loadingCtrl.create({
-      spinner: null, 
-      cssClass: 'loading-geonyx',
-      message: 'Abriendo archivo histórico...' 
-    });
-    await loading.present();
+    // Abrimos la tarjeta de inmediato para que el toque nunca parezca ignorado.
+    this.lugarSeleccionado = {
+      titulo: titulo, distancia: distancia, lat: lat, lon: lon, imagen: null,
+      traducciones: {
+        'es': { corta: 'Cargando archivo histórico...', completa: 'Cargando archivo histórico...' }
+      }
+    };
+    this.mostrarTarjeta = true;
+    this.cdr.detectChanges();
 
-    const urlWiki = `https://es.wikipedia.org/w/api.php?action=query&prop=extracts|pageimages&pageids=${pageid}&exintro=true&explaintext=true&piprop=original&format=json&origin=*`;
-    
     try {
-      const resNativa = await CapacitorHttp.get({ url: urlWiki });
-      const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
-      const paginaInfo = data.query.pages[pageid];
-      
-      const historiaTexto = paginaInfo.extract || 'No existen registros detallados.';
+      // Wikipedia se consulta en el backend: el teléfono no siempre puede acceder directo.
+      const datos: any = await firstValueFrom(this.api.getWikipedia(pageid));
+      const historiaTexto = datos.extracto || 'No existen registros detallados.';
       const textoLimpio = historiaTexto.replace(/\n/g, ' ').trim();
-      let historiaCorta = textoLimpio;
-      if (textoLimpio.length > 100) {
-        historiaCorta = textoLimpio.substring(0, 100) + '...';
-      }
+      const historiaCorta = textoLimpio.length > 100
+        ? textoLimpio.substring(0, 100) + '...'
+        : textoLimpio;
 
-      let imagenEncontrada = null;
-      if (paginaInfo.original && paginaInfo.original.source) {
-        imagenEncontrada = paginaInfo.original.source;
-      }
-
-      this.lugarSeleccionado = { 
-        titulo: titulo, distancia: distancia, lat: lat, lon: lon, imagen: imagenEncontrada,
+      this.lugarSeleccionado = {
+        titulo: titulo, distancia: distancia, lat: lat, lon: lon, imagen: datos.imagen || null,
         traducciones: {
           'es': { corta: historiaCorta, completa: textoLimpio }
         }
       };
-
-      this.mostrarTarjeta = true;
     } catch (error) {
-      this.lugarSeleccionado = { 
+      console.warn('No se pudo cargar el extracto de Wikipedia:', error);
+      this.lugarSeleccionado = {
         titulo: titulo, distancia: distancia, lat: lat, lon: lon, imagen: null,
         traducciones: {
-          'es': { corta: 'Error de conexión.', completa: 'Error de conexión.' }
+          'es': {
+            corta: 'No se pudo cargar el archivo histórico. Revisa tu conexión.',
+            completa: 'No se pudo cargar el archivo histórico. Revisa tu conexión.'
+          }
         }
       };
-      this.mostrarTarjeta = true;
     } finally {
-      this.cdr.detectChanges(); 
-      await loading.dismiss();
+      this.cdr.detectChanges();
     }
   }
 
@@ -636,38 +630,14 @@ export class HomePage implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     const textoBase = this.lugarSeleccionado?.traducciones?.['es']?.completa || '';
-    const targetLang = codigoIdioma === 'zh' ? 'zh-CN' : codigoIdioma;
     let textoTraducido = '';
 
-    // MyMemory primero (CORS permitido); Google como respaldo.
+    // El backend se encarga de MyMemory/Google y de dividir el texto en trozos.
     try {
-      const langpair = encodeURIComponent(`es|${targetLang}`);
-      const trozos = textoBase.match(/[\s\S]{1,450}/g) || [textoBase];
-      const partes: string[] = [];
-      for (const trozo of trozos) {
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trozo)}&langpair=${langpair}`;
-        const res = await CapacitorHttp.get({ url });
-        if (res.status === 200) {
-          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-          if (data?.responseData?.translatedText) partes.push(data.responseData.translatedText);
-        }
-      }
-      textoTraducido = partes.join(' ').trim();
+      const datos: any = await firstValueFrom(this.api.traducir(textoBase, codigoIdioma));
+      textoTraducido = datos?.texto || '';
     } catch (error) {
-      console.warn('Fallo MyMemory, probando Google Translate...', error);
-    }
-
-    if (!textoTraducido) {
-      try {
-        const urlTrad = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(textoBase)}`;
-        const resNativa = await CapacitorHttp.get({ url: urlTrad });
-        const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
-        if (data && data[0]) {
-          textoTraducido = data[0].map((item: any) => item[0]).join('');
-        }
-      } catch (error) {
-        console.warn('Fallo Google Translate:', error);
-      }
+      console.warn('Fallo el servicio de traducción:', error);
     }
 
     if (textoTraducido) {
@@ -756,52 +726,18 @@ export class HomePage implements OnInit, OnDestroy {
     await loading.present();
 
     const coordsStr = waypoints.map(p => `${p.lng},${p.lat}`).join(';');
-    const urls = [
-      `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&alternatives=true`,
-      `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&alternatives=true`
-    ];
-    const esValida = (d: any) => !!d && d.code === 'Ok' && Array.isArray(d.routes) && d.routes.length > 0;
 
     try {
-      let data: any = null;
-      let indiceUsado = -1;
+      // OSRM se consulta desde el backend: desde el APK fallaba de forma intermitente.
+      const data: any = await firstValueFrom(this.api.getRutas(coordsStr));
 
-      // Probamos ambos servidores: si el peatonal falla o devuelve vacío, usamos el respaldo.
-      for (let i = 0; i < urls.length; i++) {
-        try {
-          const res = await CapacitorHttp.get({ url: urls[i] });
-          const parsed = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-          if (res.status === 200 && esValida(parsed)) {
-            data = parsed;
-            indiceUsado = i;
-            break;
-          }
-        } catch (error) {
-          console.warn('Servidor de rutas no disponible, probando respaldo...', error);
-        }
-      }
-
-      if (!data) {
+      if (!data?.routes?.length) {
         // Sin servicio de rutas: al menos mostramos la guía directa entre los puntos.
         L.polyline(waypoints, { color: '#7c4dff', weight: 5, dashArray: '10, 10' }).addTo(this.rutasLayer);
         this.map.fitBounds(L.latLngBounds(waypoints), { padding: [50, 50] });
         this.navegando = true;
         this.mostrarMensaje(`${nombreTour}: ruta directa estimada (el servicio de rutas no respondió).`);
         return;
-      }
-
-      // El servidor peatonal casi siempre devuelve una sola ruta; pedimos la alternativa al otro.
-      if (data.routes.length === 1 && urls.length > 1) {
-        const indiceAlternativa = indiceUsado === 0 ? 1 : 0;
-        try {
-          const resAlt = await CapacitorHttp.get({ url: urls[indiceAlternativa] });
-          const alt = typeof resAlt.data === 'string' ? JSON.parse(resAlt.data) : resAlt.data;
-          if (resAlt.status === 200 && esValida(alt) && alt.routes.length > 1) {
-            data = { ...data, routes: [data.routes[0], alt.routes[1]] };
-          }
-        } catch (error) {
-          console.warn('No se pudo obtener la ruta alternativa.', error);
-        }
       }
 
       if (data.routes.length > 1) {

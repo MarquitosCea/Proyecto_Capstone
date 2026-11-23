@@ -20,6 +20,7 @@ import {
 import * as L from 'leaflet';
 import { NgIf, SlicePipe } from '@angular/common';
 import { CapacitorHttp } from '@capacitor/core';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../services/api';
 
 const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
@@ -882,7 +883,6 @@ export class MisterioPage implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     const textoBase = this.leyendaSeleccionada.traducciones['es']?.completa || '';
-    const targetLang = codigoIdioma === 'zh' ? 'zh-CN' : codigoIdioma; 
     let textoTraducido = '';
 
     if (!textoBase.trim()) {
@@ -892,41 +892,12 @@ export class MisterioPage implements OnInit, OnDestroy {
       return;
     }
 
-    // 1. MyMemory es el primario: permite CORS y no bloquea como translate.googleapis.com.
-    //    Se divide el texto en trozos de 450 caracteres para no perder parte de la leyenda.
+    // El backend llama a MyMemory/Google y divide el texto en trozos.
     try {
-      const langpair = encodeURIComponent(`es|${targetLang}`);
-      const trozos = textoBase.match(/[\s\S]{1,450}/g) || [textoBase];
-      const partes: string[] = [];
-
-      for (const trozo of trozos) {
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trozo)}&langpair=${langpair}`;
-        const res = await CapacitorHttp.get({ url });
-        if (res.status === 200) {
-          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-          const parte = data?.responseData?.translatedText;
-          if (parte) partes.push(parte);
-        }
-      }
-      textoTraducido = partes.join(' ').trim();
+      const datos: any = await firstValueFrom(this.api.traducir(textoBase, codigoIdioma));
+      textoTraducido = datos?.texto || '';
     } catch (e) {
-      console.warn('Fallo MyMemory, probando Google Translate...', e);
-    }
-
-    // 2. Google Translate como respaldo
-    if (!textoTraducido) {
-      try {
-        const urlTrad = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=${targetLang}&dt=t&q=${encodeURIComponent(textoBase)}`;
-        const resNativa = await CapacitorHttp.get({ url: urlTrad });
-        if (resNativa.status === 200) {
-          const data = typeof resNativa.data === 'string' ? JSON.parse(resNativa.data) : resNativa.data;
-          if (Array.isArray(data) && Array.isArray(data[0])) {
-            textoTraducido = data[0].map((item: any) => item[0]).join('');
-          }
-        }
-      } catch (e) {
-        console.warn('Fallo Google Translate:', e);
-      }
+      console.warn('Fallo el servicio de traducción:', e);
     }
 
     if (textoTraducido) {

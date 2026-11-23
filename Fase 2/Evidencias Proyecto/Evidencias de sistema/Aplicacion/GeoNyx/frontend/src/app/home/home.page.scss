@@ -231,3 +231,23 @@ ion-list,
   pointer-events: none;
   user-select: none;
 }
+
+/* Header del Modo Histórico: siempre negro, incluso con tema del sistema */
+::ng-deep .toolbar-historico,
+::ng-deep ion-header.toolbar-historico ion-toolbar {
+  --background: #000000 !important;
+  --color: #ffffff !important;
+  --border-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+::ng-deep ion-header.toolbar-historico ion-title {
+  color: #ffffff !important;
+}
+
+::ng-deep ion-header.toolbar-historico ion-searchbar {
+  --background: #1e1e1e !important;
+  --color: #ffffff !important;
+  --placeholder-color: #bbbbbb !important;
+  --icon-color: #ffffff !important;
+}

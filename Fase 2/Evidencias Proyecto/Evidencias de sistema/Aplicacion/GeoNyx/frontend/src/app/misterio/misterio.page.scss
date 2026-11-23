@@ -142,11 +142,33 @@
 /* Fondo gris más claro para las cajas de texto (resaltan sobre el negro) */
 ::ng-deep ion-modal ion-item {
   --background: #1e1e1e !important; /* Gris carbón claro */
+  --color: #ffffff !important;
   --inner-border-width: 0 !important; /* <-- ESTO ELIMINA LA LÍNEA BLANCA INTERNA */
   --border-width: 0 !important;       /* <-- ESTO ELIMINA LA LÍNEA BLANCA EXTERNA */
   border: 1px solid rgba(255, 0, 183, 0.5); /* Borde magenta sutil */
   border-radius: 8px; /* Bordes redondeados */
   margin-bottom: 12px; /* Separación entre cajas */
+}
+
+/* Con el modo nocturno del sistema el texto heredaba el color negro global. */
+::ng-deep ion-modal ion-label,
+::ng-deep ion-modal ion-input,
+::ng-deep ion-modal ion-textarea,
+::ng-deep ion-modal input,
+::ng-deep ion-modal textarea {
+  color: #ffffff !important;
+  --color: #ffffff !important;
+}
+
+::ng-deep ion-modal ion-input::placeholder,
+::ng-deep ion-modal ion-textarea::placeholder,
+::ng-deep ion-modal input::placeholder,
+::ng-deep ion-modal textarea::placeholder {
+  color: #aaaaaa !important;
+}
+
+::ng-deep ion-modal ion-toolbar ion-title {
+  color: #ffffff !important;
 }
 
 /* --- NUEVO BOTÓN DE PUBLICAR TEMÁTICO --- */

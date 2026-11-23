@@ -3,11 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import os
 from supabase import create_client, Client
+import json
+import os
+import re
+import urllib.parse
+import urllib.request
 
 load_dotenv()
+
 DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -16,10 +24,11 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="GeoNyx API")
 
+# API pública: se permite cualquier origen (login/registro usan token en el body, no cookies)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://[https://proyecto-capstone-1-wm9z.onrender.com](https://proyecto-capstone-1-wm9z.onrender.com):8100", "http://127.0.0.1:8100"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -63,6 +72,117 @@ class NuevaPassword(BaseModel):
 @app.get("/")
 def raiz():
     return "El servidor de GeoNyx está funcionando"
+
+
+def _obtener_json(url: str, timeout: int = 20):
+    """Descarga un JSON externo desde el servidor (evita bloqueos de red del teléfono)."""
+    peticion = urllib.request.Request(url, headers={"User-Agent": "GeoNyx/1.0"})
+    with urllib.request.urlopen(peticion, timeout=timeout) as respuesta:
+        return json.loads(respuesta.read().decode("utf-8"))
+
+
+@app.get("/rutas")
+def obtener_rutas(coords: str):
+    """coords = lng,lat;lng,lat;...  Calcula rutas peatonales en el servidor."""
+    patron = r"-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?(?:;-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?){1,10}"
+    if not re.fullmatch(patron, coords):
+        raise HTTPException(status_code=400, detail="Formato de coordenadas inválido")
+
+    urls = [
+        "https://routing.openstreetmap.de/routed-foot/route/v1/driving/"
+        + coords + "?overview=full&geometries=geojson&alternatives=true",
+        "https://router.project-osrm.org/route/v1/driving/"
+        + coords + "?overview=full&geometries=geojson&alternatives=true",
+    ]
+    errores = []
+    respuestas = []
+    for url in urls:
+        try:
+            datos = _obtener_json(url)
+            if datos.get("code") == "Ok" and datos.get("routes"):
+                respuestas.append(datos)
+            else:
+                errores.append("respuesta sin rutas")
+        except Exception as exc:
+            errores.append(str(exc))
+
+    if not respuestas:
+        raise HTTPException(status_code=502, detail="No se pudo calcular la ruta: " + "; ".join(errores))
+
+    principal = respuestas[0]
+    # El servidor peatonal suele devolver una sola ruta; tomamos la alternativa del otro.
+    if len(principal["routes"]) == 1:
+        for alternativa in respuestas[1:]:
+            if len(alternativa["routes"]) > 1:
+                principal = {
+                    **principal,
+                    "routes": [principal["routes"][0], alternativa["routes"][1]],
+                }
+                break
+    return principal
+
+
+@app.get("/traducir")
+def traducir(texto: str, idioma: str):
+    """Traduce español -> idioma usando MyMemory, con Google como respaldo."""
+    if not texto or not idioma:
+        raise HTTPException(status_code=400, detail="Faltan parámetros")
+
+    lang = "zh-CN" if idioma == "zh" else idioma
+    errores = []
+    partes = []
+
+    # MyMemory limita el tamaño de la petición: traducimos por trozos desde el servidor.
+    for inicio in range(0, len(texto), 450):
+        trozo = texto[inicio:inicio + 450]
+        traduccion = ""
+
+        url_mem = ("https://api.mymemory.translated.net/get?q="
+                   + urllib.parse.quote(trozo)
+                   + "&langpair=" + urllib.parse.quote("es|" + lang))
+        try:
+            datos = _obtener_json(url_mem)
+            traduccion = (datos.get("responseData") or {}).get("translatedText") or ""
+        except Exception as exc:
+            errores.append(str(exc))
+
+        if not traduccion:
+            url_google = ("https://translate.googleapis.com/translate_a/single?client=gtx"
+                          "&sl=es&tl=" + urllib.parse.quote(lang)
+                          + "&dt=t&q=" + urllib.parse.quote(trozo))
+            try:
+                datos = _obtener_json(url_google)
+                if isinstance(datos, list) and datos and isinstance(datos[0], list):
+                    traduccion = "".join(parte[0] for parte in datos[0] if parte and parte[0])
+            except Exception as exc:
+                errores.append(str(exc))
+
+        if traduccion:
+            partes.append(traduccion)
+
+    if partes:
+        return {"texto": " ".join(partes).strip()}
+
+    raise HTTPException(status_code=502, detail="No se pudo traducir: " + "; ".join(errores[:3]))
+
+
+@app.get("/wikipedia")
+def wikipedia(pageid: int):
+    """Devuelve el extracto y la imagen de un lugar de Wikipedia."""
+    url = ("https://es.wikipedia.org/w/api.php?action=query"
+           "&prop=extracts%7Cpageimages&pageids=" + str(pageid)
+           + "&exintro=true&explaintext=true&piprop=original&format=json&origin=*")
+    try:
+        datos = _obtener_json(url)
+        paginas = (datos.get("query") or {}).get("pages") or {}
+        pagina = paginas.get(str(pageid)) or {}
+        return {
+            "extracto": pagina.get("extract", ""),
+            "imagen": (pagina.get("original") or {}).get("source"),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Error consultando Wikipedia: " + str(exc))
+
 
 @app.get("/test-db")
 def probar_base_datos():
