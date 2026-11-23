@@ -72,6 +72,15 @@ ion-loading.loading-geonyx {
   100% { transform: rotate(360deg) scale(1); }
 }
 
+/* Leaflet crea sus marcadores fuera del DOM de Angular: estas reglas deben ser globales */
+.marcador-historico,
+.marcador-historico *,
+.marcador-leyenda,
+.marcador-leyenda * {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
 @import 'leaflet/dist/leaflet.css';
 @import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 

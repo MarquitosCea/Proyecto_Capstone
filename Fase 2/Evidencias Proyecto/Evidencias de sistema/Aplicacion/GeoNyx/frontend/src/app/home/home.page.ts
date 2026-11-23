@@ -68,6 +68,10 @@ export class HomePage implements OnInit, OnDestroy {
   idiomaActivo: string = 'es'; 
   traduciendoTexto: boolean = false;
   leyendoAudio: boolean = false; 
+  private audioActual: HTMLAudioElement | null = null;
+  private urlAudioActual: string | null = null;
+  private audioFallbackTimer: any = null;
+  private tokenAudio: number = 0;
   
   tipoPlanUsuario: string = 'observador'; 
   
@@ -663,42 +667,143 @@ export class HomePage implements OnInit, OnDestroy {
     if (this.leyendoAudio) {
       this.detenerAudio();
     } else {
-      this.reproducirAudio();
+      void this.reproducirAudio();
     }
   }
 
-  reproducirAudio() {
+  async reproducirAudio() {
     this.detenerAudio();
-    this.leyendoAudio = true;
-    this.cdr.detectChanges();
 
     const textoALeer = this.lugarSeleccionado.traducciones[this.idiomaActivo]?.completa || '';
-    if (!textoALeer) return;
+    if (!textoALeer.trim()) return;
 
+    const token = ++this.tokenAudio;
     const confIdioma = this.idiomasDisponibles.find(i => i.codigo === this.idiomaActivo);
     const vozObjetivo = confIdioma ? confIdioma.voz : 'es-CL';
+    const usarBackend = () => this.reproducirConBackend(textoALeer, vozObjetivo, token);
 
-    const mensaje = new SpeechSynthesisUtterance(textoALeer);
-    mensaje.lang = vozObjetivo;
+    // 1. Voz nativa SOLO si el WebView tiene voces cargadas. En Android suele
+    //    tener speechSynthesis pero getVoices() devuelve [] y speak() no hace nada.
+    const nativo = typeof window !== 'undefined'
+      && !!(window as any).speechSynthesis
+      && typeof (window as any).SpeechSynthesisUtterance !== 'undefined';
 
-    const voces = window.speechSynthesis.getVoices();
-    const prefijo = vozObjetivo.split('-')[0]; 
-    
-    let mejorVoz = voces.find(v => v.lang === vozObjetivo) || voces.find(v => v.lang.startsWith(prefijo));
-    if (mejorVoz) {
-      mensaje.voice = mejorVoz;
+    let voces: SpeechSynthesisVoice[] = [];
+    if (nativo) {
+      try { voces = window.speechSynthesis.getVoices() || []; } catch { voces = []; }
+    }
+    const prefijo = vozObjetivo.split('-')[0];
+    const mejorVoz = voces.find(v => v.lang === vozObjetivo) || voces.find(v => v.lang.startsWith(prefijo));
+
+    if (nativo && mejorVoz) {
+      try {
+        const mensaje = new SpeechSynthesisUtterance(textoALeer);
+        mensaje.lang = vozObjetivo;
+        mensaje.voice = mejorVoz;
+
+        let iniciado = false;
+        const limpiarTimer = () => {
+          if (this.audioFallbackTimer !== null) {
+            clearTimeout(this.audioFallbackTimer);
+            this.audioFallbackTimer = null;
+          }
+        };
+
+        mensaje.onstart = () => { iniciado = true; limpiarTimer(); };
+        mensaje.onend = () => {
+          if (token !== this.tokenAudio) return;
+          limpiarTimer();
+          this.finalizarAudio();
+        };
+        mensaje.onerror = () => {
+          if (token !== this.tokenAudio) return;
+          limpiarTimer();
+          this.finalizarAudio();
+          void usarBackend();
+        };
+
+        this.leyendoAudio = true;
+        this.cdr.detectChanges();
+        window.speechSynthesis.speak(mensaje);
+
+        // Si la voz nativa ni siquiera llega a "start", cambiamos al MP3 del backend.
+        this.audioFallbackTimer = setTimeout(() => {
+          if (iniciado || token !== this.tokenAudio) return;
+          console.warn('La voz nativa no inició; usando MP3 del backend...');
+          try { (window as any).speechSynthesis.cancel(); } catch { /* ignora */ }
+          limpiarTimer();
+          void usarBackend();
+        }, 1800);
+        return;
+      } catch (error) {
+        console.warn('Voz nativa no disponible, usando respaldo del backend...', error);
+      }
     }
 
-    mensaje.onend = () => { this.leyendoAudio = false; this.cdr.detectChanges(); };
-    mensaje.onerror = () => { this.leyendoAudio = false; this.cdr.detectChanges(); };
-    
-    window.speechSynthesis.speak(mensaje);
+    await usarBackend();
+  }
+
+  private async reproducirConBackend(texto: string, voz: string, token: number) {
+    try {
+      if (token !== this.tokenAudio) return;
+      this.leyendoAudio = true;
+      this.cdr.detectChanges();
+
+      const blob = await firstValueFrom(this.api.sintetizarVoz(texto, voz));
+      if (token !== this.tokenAudio) return;
+
+      this.urlAudioActual = URL.createObjectURL(blob);
+      const audio = new Audio(this.urlAudioActual);
+      this.audioActual = audio;
+      audio.onended = () => { if (token === this.tokenAudio) this.finalizarAudio(); };
+      audio.onerror = () => {
+        if (token !== this.tokenAudio) return;
+        this.finalizarAudio();
+        this.mostrarMensaje('No se pudo reproducir el audio.');
+      };
+      await audio.play();
+    } catch (error) {
+      console.warn('Error reproduciendo audio:', error);
+      if (token === this.tokenAudio) {
+        this.finalizarAudio();
+        this.mostrarMensaje('No se pudo reproducir el audio en este dispositivo.');
+      }
+    }
+  }
+
+  private finalizarAudio() {
+    if (this.audioFallbackTimer !== null) {
+      clearTimeout(this.audioFallbackTimer);
+      this.audioFallbackTimer = null;
+    }
+    this.leyendoAudio = false;
+    if (this.urlAudioActual) {
+      URL.revokeObjectURL(this.urlAudioActual);
+      this.urlAudioActual = null;
+    }
+    this.audioActual = null;
+    this.cdr.detectChanges();
   }
 
   detenerAudio() {
-    window.speechSynthesis.cancel();
-    this.leyendoAudio = false;
-    this.cdr.detectChanges();
+    // NUNCA lanzar excepción aquí: se llama antes de abrir tarjetas y antes de traducir.
+    this.tokenAudio++;
+    try {
+      if (typeof window !== 'undefined' && (window as any).speechSynthesis) {
+        (window as any).speechSynthesis.cancel();
+      }
+    } catch (error) {
+      console.warn('No se pudo detener la voz nativa:', error);
+    }
+    if (this.audioActual) {
+      try {
+        this.audioActual.pause();
+        this.audioActual.currentTime = 0;
+      } catch (error) {
+        console.warn('No se pudo detener el audio:', error);
+      }
+    }
+    this.finalizarAudio();
   }
 
   toggleHistoria() {

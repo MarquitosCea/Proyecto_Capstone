@@ -25,6 +25,10 @@ export class ApiService {
     return this.http.get(`${this.apiUrl}/wikipedia`, { params: { pageid: String(pageid) } });
   }
 
+  sintetizarVoz(texto: string, idioma: string): Observable<Blob> {
+    return this.http.post(`${this.apiUrl}/tts`, { texto, idioma }, { responseType: 'blob' });
+  }
+
   getLeyendas(): Observable<any> {
     return this.http.get(`${this.apiUrl}/leyendas`);
   }

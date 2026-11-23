@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 from pydantic import BaseModel
@@ -68,6 +69,10 @@ class NuevaPassword(BaseModel):
     access_token: str
     refresh_token: str
     new_password: str
+
+class SolicitudTTS(BaseModel):
+    texto: str
+    idioma: str
 
 @app.get("/")
 def raiz():
@@ -182,6 +187,34 @@ def wikipedia(pageid: int):
         }
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Error consultando Wikipedia: " + str(exc))
+
+
+@app.post("/tts")
+def texto_a_voz(datos: SolicitudTTS):
+    """Convierte texto a MP3 en el servidor (los WebView de Android no siempre tienen speechSynthesis)."""
+    texto = (datos.texto or "").strip()
+    if not texto:
+        raise HTTPException(status_code=400, detail="No hay texto para leer")
+
+    lang = "zh-CN" if datos.idioma == "zh" else datos.idioma
+    fragmentos = [texto[i:i + 170] for i in range(0, len(texto), 170)]
+    audio = bytearray()
+
+    for fragmento in fragmentos:
+        url = ("https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob"
+               "&tl=" + urllib.parse.quote(lang)
+               + "&q=" + urllib.parse.quote(fragmento))
+        try:
+            peticion = urllib.request.Request(url, headers={"User-Agent": "GeoNyx/1.0"})
+            with urllib.request.urlopen(peticion, timeout=20) as respuesta:
+                audio.extend(respuesta.read())
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="No se pudo generar el audio: " + str(exc))
+
+    if not audio:
+        raise HTTPException(status_code=502, detail="No se pudo generar el audio")
+
+    return Response(content=bytes(audio), media_type="audio/mpeg")
 
 
 @app.get("/test-db")
